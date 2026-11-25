@@ -51,13 +51,20 @@ const server = http.createServer((req, res) => {
     await host.click('#btnGo, #btnNext');
     await sleep(1200); await shot(host, `02-intro-q${qi}`);
     await host.waitForSelector('#timer', { timeout: 30000 }); await sleep(400);
-    const Q = await host.evaluate(() => { const q = window.__host.questions[window.__host.qi]; return { correct: q.correct, n: q.options.length }; });
+    const Q = await host.evaluate(() => { const q = window.__host.questions[window.__host.qi]; return { correct: q.correct, n: q.options.length, type: q.type, min: q.min, max: q.max }; });
+    if (Q.type === 'number') await shot(players[0], `p-03-number-q${qi}`);
     // Players answer in a different order each question; roughly two in three get it right; the last two stay silent.
     for (let j = 0; j < NAMES.length - 2; j++) {
       const i = (j * 7 + qi * 5) % NAMES.length;
       const right = (i + qi) % 3 !== 0;
-      const choice = right ? Q.correct[0] : [...Array(Q.n).keys()].find((x) => !Q.correct.includes(x));
-      await players[i].click(`.p-answer[data-i="${choice}"]`).catch(() => {});
+      if (Q.type === 'number') {
+        const target = right ? Q.correct[0] : Math.max(Q.min, Math.min(Q.max, Q.correct[0] + ((i % 5) - 2 || 3)));
+        for (let v = Q.min; v < target; v++) await players[i].click('#pPlus').catch(() => {});
+        await players[i].click('#pLock').catch(() => {});
+      } else {
+        const choice = right ? Q.correct[0] : [...Array(Q.n).keys()].find((x) => !Q.correct.includes(x));
+        await players[i].click(`.p-answer[data-i="${choice}"]`).catch(() => {});
+      }
       await sleep(120);
       if (j === 11) { await shot(host, `03-question-q${qi}`); await shot(players[(qi * 5 + 3) % NAMES.length], `p-03-question-q${qi}`); }
     }

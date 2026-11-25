@@ -14,7 +14,7 @@ A live quiz for Louisa's 24th birthday: one big screen runs the show, ~15 player
 | Mascot | Louisa as a white rat with blue eyes and a party hat |
 | Language | UI in English, questions in Swedish |
 | Players | ~15, join by QR code or URL + 4-letter room code; late joiners allowed |
-| Question types | Multiple choice (2–4 options), true/false, photo answers; optional image or video on any question |
+| Question types | Multiple choice (2–4 options), true/false, photo answers, number (step a counter on the phone; added 2026-11-25); optional image or video on any question |
 | Correct answers | One or several per question; players pick one; any correct one scores in full |
 | Scoring | 500–1000 points for a correct answer depending on speed, 0 otherwise; host clock decides. Streak bonus (+100/+200/+300 from the 2nd correct answer in a row) and a double-points final question (added 2026-11-25, `doubleFinal` in config) |
 | Timer | 20 s default, per-question override; a video plays first, timer starts when it ends |

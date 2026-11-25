@@ -45,6 +45,7 @@ Two broadcast topics per room code `CODE`:
 
 Host re-broadcasts `state` every 4 s as a heartbeat. A phone that (re)joins triggers a full `state` + `results` broadcast. Phones keep `{id,name,code}` in localStorage, so reloads rejoin as the same player.
 Answer timing is measured on the **host** clock at receipt. Points = `round(1000 × (1 − t / (2 × limit)))` for correct answers (500–1000), else 0. Several correct options are allowed (`correct: [0, 2]`); a player picks one.
+A `number` question has no options: `state` carries `min`/`max`/`unit`, the phone sends the chosen number as `choice`, and `S.counts` is then a map of guessed value → how many. Only the exact number is correct.
 On top of that (all applied in `endQuestion`): a **streak bonus** (2 right in a row +100, 3 +200, 4 or more +300; a miss or no answer resets it) and a **double final question** (`doubleFinal` in `js/config.js`, only when the quiz has 3+ questions; base and bonus are both doubled).
 
 Phases: `title → lobby → intro → question → reveal → leaderboard → … → podium`. Video questions stay in `intro` until the clip ends, then the timer starts.

@@ -65,6 +65,7 @@
       p.k = S.qKey; p.limit = cq.timeLimit; if (isDouble()) p.dbl = true;
       if (S.phase === 'reveal') p.wait = REVEAL_MS;
       if (cq.type === 'photo') p.opts = cq.options.map((o) => ({ label: o.label, image: o.image }));
+      if (cq.type === 'number') { p.min = cq.min; p.max = cq.max; p.unit = cq.unit; }
       if (S.phase === 'question') p.endsIn = Math.max(0, S.endsAt - performance.now());
       if (S.phase === 'reveal') p.correct = cq.correct;
     }
@@ -132,7 +133,8 @@
   function onAnswer({ id, q: qi, choice }) {
     if (S.phase !== 'question' || qi !== S.qi || !S.players[id] || S.answers[id]) return;
     const cq = q();
-    if (!Number.isInteger(choice) || choice < 0 || choice >= cq.options.length) return;
+    if (!Number.isInteger(choice)) return;
+    if (cq.type === 'number' ? (choice < cq.min || choice > cq.max) : (choice < 0 || choice >= cq.options.length)) return;
     const t = (performance.now() - S.qStart) / 1000;
     if (t > S.limit + LATE_GRACE_S) return;
     const correct = cq.correct.includes(choice);
@@ -248,12 +250,12 @@
     S.prevScores = Object.fromEntries(Object.entries(S.players).map(([id, p]) => [id, p.score]));
     S.prevRanks = Object.fromEntries(ranked().map((p, i) => [p.id, i]));
     S.moves = Object.values(S.prevScores).some((v) => v > 0);
-    S.counts = cq.options.map(() => 0);
+    S.counts = cq.type === 'number' ? {} : cq.options.map(() => 0); // number questions: guesses per value
     const mult = isDouble() ? 2 : 1;
     S.fastest = null;
     Object.entries(S.players).forEach(([id, p]) => {
       const a = S.answers[id];
-      if (a) S.counts[a.choice] += 1;
+      if (a) S.counts[a.choice] = (S.counts[a.choice] || 0) + 1;
       if (!a || !a.correct) { p.streak = 0; return; }
       p.streak = (p.streak || 0) + 1; p.best = Math.max(p.best || 0, p.streak); p.right = (p.right || 0) + 1;
       p.fast = Math.min(p.fast ?? 999, a.t);
@@ -438,6 +440,18 @@
 
   function answersHTML(cq, reveal) {
     const tick = `<span class="tick">${GLYPHS.yes}</span>`;
+    if (cq.type === 'number') {
+      const unit = cq.unit ? `<span class="num-unit">${esc(cq.unit)}</span>` : '';
+      if (!reveal) return `<div class="num-panel"><div class="num-answer"><span class="num-big">?</span>${unit}</div><p class="num-hint">Set your number on your phone, then lock it in.</p></div>`;
+      // Every number somebody guessed, plus the right one, as a small bar chart.
+      const c = cq.correct[0];
+      const vals = [...new Set([...Object.keys(S.counts).map(Number), c])].sort((a, b) => a - b);
+      const top = Math.max(1, ...Object.values(S.counts));
+      return `<div class="num-panel">
+        <div class="num-answer rv-late"><span class="num-big">${c}</span>${unit}</div>
+        <div class="num-hist">${vals.map((v) => `<div class="num-col ${v === c ? 'correct' : 'wrong'}" style="--share:${((S.counts[v] || 0) / top).toFixed(3)}"><span class="num-count">${S.counts[v] || 0}</span><span class="num-bar"></span><span class="num-val">${v}</span></div>`).join('')}</div>
+      </div>`;
+    }
     const most = Math.max(1, ...(reveal ? S.counts : [1]));
     const share = (i) => (reveal ? (S.counts[i] / most).toFixed(3) : 0); // how full this answer's bar is on the reveal
     if (cq.type === 'photo') {
@@ -452,7 +466,7 @@
     }
     return `<div class="answer-grid n${cq.options.length} ${cq.type}">${cq.options.map((o, i) => {
       const st = answerStyle(cq.type, i); const ok = cq.correct.includes(i);
-      return `<div class="answer ${reveal ? (ok ? 'correct' : 'wrong') : ''}" style="--c:${st.color};--ink:${st.ink};--share:${share(i)}">
+      return `<div class="answer ${o.label.length > 34 ? 'long' : ''} ${reveal ? (ok ? 'correct' : 'wrong') : ''}" style="--c:${st.color};--ink:${st.ink};--share:${share(i)}">
         <span class="chip">${st.glyph}</span>${o.icon ? `<img class="answer-icon" src="${esc(o.icon)}" alt="">` : ''}<span class="label">${esc(o.label)}</span>
         ${reveal ? `<span class="count">${S.counts[i]}</span>${ok ? tick : ''}` : ''}
       </div>`;

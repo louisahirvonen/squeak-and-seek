@@ -45,6 +45,14 @@
       "timeLimit": 10
     },
     {
+      "type": "number",
+      "text": "Hur många ostar?",
+      "min": 0,
+      "max": 10,
+      "unit": "st",
+      "correct": 3
+    },
+    {
       "type": "multiple",
       "text": "Vilka av dessa är gnagare?",
       "options": [

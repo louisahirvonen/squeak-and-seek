@@ -101,8 +101,17 @@
       let type = q.type || (Array.isArray(q.options) ? (q.options.some((o) => o && o.image) ? 'photo' : 'multiple') : 'truefalse');
       if (type === 'image' || type === 'images') type = 'photo';
       if (type === 'tf' || type === 'true/false') type = 'truefalse';
-      let options; let correct;
-      if (type === 'truefalse') {
+      if (type === 'slider' || type === 'numeric') type = 'number';
+      let options; let correct; let extra = {};
+      if (type === 'number') {
+        // Players step a counter up and down on their phone; only the exact number counts.
+        const min = Number.isFinite(Number(q.min)) ? Math.round(Number(q.min)) : 0;
+        const max = Number.isFinite(Number(q.max)) ? Math.round(Number(q.max)) : 20;
+        const c = Number(q.correct);
+        options = []; correct = [c]; extra = { min, max, unit: String(q.unit ?? '') };
+        if (max <= min) errors.push(`Question ${n}: "max" must be larger than "min".`);
+        if (!Number.isInteger(c) || c < min || c > max) errors.push(`Question ${n}: "correct" must be a whole number from ${min} to ${max}.`);
+      } else if (type === 'truefalse') {
         options = [{ label: 'True' }, { label: 'False' }];
         const c = Array.isArray(q.correct) ? q.correct : [q.correct];
         correct = [...new Set(c.map((v) => (v === true || v === 'true' || v === 0 ? 0 : 1)))];
@@ -116,7 +125,7 @@
         if (!correct.length) errors.push(`Question ${n}: "correct" must be an option position from 0 to ${options.length - 1} (or a list of them).`);
       }
       const media = q.media || (q.image ? { image: q.image } : q.video ? { video: q.video } : null);
-      return { text, type, options, correct, media, timeLimit: Number(q.timeLimit) || def };
+      return { text, type, options, correct, media, timeLimit: Number(q.timeLimit) || def, ...extra };
     });
     return { title: data.title || 'Squeak & Seek', questions, errors };
   }

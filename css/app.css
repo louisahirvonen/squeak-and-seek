@@ -507,3 +507,45 @@ body.player[data-urgent] .p-secs { color: var(--coral); animation: pulse .5s inf
 
 /* small picture next to an answer's text (big screen) */
 .answer-icon { flex: none; width: 9vh; height: 9vh; padding: .7vh; border-radius: 20px; background: var(--paper); object-fit: contain; }
+
+/* long answer texts get a smaller size so the card stays two lines */
+.answer.long .label { font-size: clamp(1.05rem, 1.75vw, 1.9rem); line-height: 1.05; }
+
+/* ---------- number question (big screen) ---------- */
+.num-panel { display: flex; align-items: center; gap: 4vw; min-height: 27vh; padding: 2.4vh 3vw; border-radius: var(--r); background: var(--soft); animation: rise .45s ease-out both; }
+.reveal .num-panel { animation: none; }
+.num-answer { display: flex; align-items: baseline; gap: 1vw; flex: none; }
+.num-big { font-family: var(--display); font-variation-settings: 'wdth' 80; font-weight: 800; font-size: 20vh; line-height: .85; letter-spacing: -.05em; color: var(--lime); }
+.num-unit { font-family: var(--display); font-weight: 800; font-size: 5vh; letter-spacing: -.02em; }
+.num-hint { margin: 0; font-size: clamp(1.2rem, 2vw, 2rem); font-weight: 500; opacity: .8; max-width: 22ch; line-height: 1.15; }
+.num-hist { flex: 1; display: flex; align-items: flex-end; justify-content: flex-end; gap: 1vw; height: 22vh; }
+.num-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: .6vh; width: min(6vw, 90px); height: 100%; }
+.num-bar { width: 100%; height: calc(var(--share) * 13vh + 6px); border-radius: 12px; background: var(--paper); transform-origin: bottom; animation: growY .6s .1s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes growY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes toLime { to { background: var(--lime); } }
+.num-col.correct .num-bar { animation: growY .6s .1s cubic-bezier(.2,.8,.2,1) both, toLime .3s .9s forwards; }
+.num-col.wrong { animation: dim .5s .9s ease-out forwards; }
+.num-count { font-family: var(--display); font-weight: 800; font-size: clamp(1.2rem, 2vw, 2rem); line-height: 1; }
+.num-val { font-family: var(--display); font-weight: 800; font-size: clamp(1.4rem, 2.4vw, 2.4rem); line-height: 1; opacity: .8; }
+.num-col.correct .num-val { color: var(--lime); opacity: 1; }
+
+/* ---------- number question (phone) ---------- */
+.p-number { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 22px; padding: 20px 22px 40px; }
+.p-number .kicker { text-align: center; }
+.p-num-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.p-step { flex: none; width: 84px; height: 84px; border: 0; border-radius: 28px; background: var(--lime); color: var(--ink); display: grid; place-items: center; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform .1s, opacity .2s; }
+.p-step svg { width: 44px; height: 44px; }
+.p-step:active { transform: scale(.92); }
+.p-step:disabled { opacity: .3; }
+#pMinus { background: var(--pink); }
+.p-num { flex: 1; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.p-num output { font-family: var(--display); font-variation-settings: 'wdth' 80; font-weight: 800; font-size: 7.5rem; letter-spacing: -.05em; display: block; }
+.p-num output.p-bump { animation: bump .18s ease-out; }
+.p-num small { font-family: var(--display); font-weight: 800; font-size: 1.6rem; opacity: .8; }
+.p-number .btn { width: 100%; padding: 1em; }
+.p-picked.p-picked-num { padding: 0; display: grid; place-items: center; }
+.p-picked-num span { font-family: var(--display); font-variation-settings: 'wdth' 80; font-weight: 800; font-size: 4.2rem; letter-spacing: -.05em; line-height: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .num-col.correct .num-bar { background: var(--lime); }
+  .num-col.wrong { opacity: .18; }
+}

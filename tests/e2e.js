@@ -74,6 +74,12 @@ const server = http.createServer((req, res) => {
   await shot(players[0], 'p-01-lobby.png');
 
   // Play every question. p0 always right, p1 wrong except on multi-answer questions, p2 answers only even questions (right).
+  // Answer on a phone: tap a button, or step the counter and lock in on a number question.
+  const answer = async (p, Q, choice) => {
+    if (Q.type !== 'number') return p.click(`.p-answer[data-i="${choice}"]`);
+    for (let v = Q.min; v < choice; v++) await p.click('#pPlus');
+    await p.click('#pLock');
+  };
   const total = await host.evaluate(() => window.__host.questions.length);
   for (let qi = 0; qi < total; qi++) {
     await host.click('#btnGo, #btnNext');
@@ -83,12 +89,12 @@ const server = http.createServer((req, res) => {
     await sleep(600);
     await shot(host, `04-question-q${qi}.png`);
     await shot(players[0], `p-04-question-q${qi}.png`);
-    const Q = await host.evaluate(() => { const q = window.__host.questions[window.__host.qi]; return { correct: q.correct, n: q.options.length }; });
-    const wrong = [...Array(Q.n).keys()].find((i) => !Q.correct.includes(i));
-    await players[0].click(`.p-answer[data-i="${Q.correct[0]}"]`);
+    const Q = await host.evaluate(() => { const q = window.__host.questions[window.__host.qi]; return { correct: q.correct, n: q.options.length, type: q.type, min: q.min }; });
+    const wrong = Q.type === 'number' ? Q.correct[0] + 1 : [...Array(Q.n).keys()].find((i) => !Q.correct.includes(i));
+    await answer(players[0], Q, Q.correct[0]);
     await sleep(250);
-    await players[1].click(`.p-answer[data-i="${Q.correct.length > 1 ? Q.correct[Q.correct.length - 1] : wrong}"]`);
-    if (qi % 2 === 0) { await sleep(250); await players[2].click(`.p-answer[data-i="${Q.correct[0]}"]`); }
+    await answer(players[1], Q, Q.correct.length > 1 ? Q.correct[Q.correct.length - 1] : wrong);
+    if (qi % 2 === 0) { await sleep(250); await answer(players[2], Q, Q.correct[0]); }
     else { await sleep(300); await host.click('#btnSkip'); }
     await host.waitForSelector('.reveal', { timeout: 8000 });
     await sleep(2100); // the reveal holds the right answer back for a moment

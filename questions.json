@@ -87,6 +87,29 @@
       "correct": 0
     },
     {
+      "type": "multiple",
+      "text": "Varför kan Louisa inte sova om nätterna?",
+      "options": [
+        "Mattias snarkar",
+        "Mardrömmar om jobbet",
+        "Minnet av tekoppen hon tappade på en kvinnas fot i en hotellhiss i Mexiko",
+        "Mattias spelar GTA VI"
+      ],
+      "correct": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "type": "number",
+      "text": "Hur länge har Louisa och Mattias varit ihop?",
+      "min": 0,
+      "max": 15,
+      "unit": "år",
+      "correct": 6
+    },
+    {
       "type": "truefalse",
       "text": "Råttor skrattar när man kittlar dem.",
       "correct": true

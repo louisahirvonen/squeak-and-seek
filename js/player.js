@@ -157,6 +157,44 @@
     if (picked !== undefined) return pLocked(s, picked);
     const ends = Date.now() + (s.endsIn || 0);
     const total = (s.limit ? s.limit * 1000 : 0) || s.endsIn || 1;
+    const lockIn = (value) => {
+      answers[key] = value; try { sessionStorage.setItem('squeak-answers', JSON.stringify(answers)); } catch (e) { /* private mode */ }
+      buzz(30);
+      send(s.q, value, 0);
+      shownKey = ''; render(false);
+    };
+    const startBar = () => {
+      const bar = $('#pBar'); const secs = $('#pSecs'); let lastSec = null;
+      const tickBar = () => {
+        const left = Math.max(0, ends - Date.now()); bar.style.width = Math.min(100, (left / total) * 100) + '%';
+        const whole = Math.ceil(left / 1000);
+        if (whole !== lastSec) { lastSec = whole; secs.textContent = whole; if (whole <= 5) { document.body.dataset.urgent = '1'; if (whole > 0 && whole <= 3) buzz(12); } }
+        if (!left) clearInterval(countdown);
+      };
+      tickBar(); countdown = setInterval(tickBar, 100);
+    };
+    const timerRow = '<div class="p-timer-row"><div class="p-timer"><span id="pBar"></span></div><span class="p-secs" id="pSecs"></span></div>';
+    if (s.type === 'number') {
+      // A counter that starts at the lowest number; arrows step it, the big button locks it in.
+      const min = Number.isFinite(s.min) ? s.min : 0; const max = Number.isFinite(s.max) ? s.max : 20; let value = min;
+      const arrow = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      screen.innerHTML = `${header()}${timerRow}
+        <section class="p-number">
+          <p class="kicker">Your answer</p>
+          <div class="p-num-row">
+            <button class="p-step" id="pMinus" aria-label="Lower">${arrow('M15 5l-7 7 7 7')}</button>
+            <div class="p-num"><output id="pVal">${value}</output>${s.unit ? `<small>${esc(s.unit)}</small>` : ''}</div>
+            <button class="p-step" id="pPlus" aria-label="Higher">${arrow('M9 5l7 7-7 7')}</button>
+          </div>
+          <button class="btn primary big" id="pLock">Lock in &rarr;</button>
+        </section>`;
+      const out = $('#pVal');
+      const step = (d) => { const v = Math.max(min, Math.min(max, value + d)); if (v === value) return buzz(40); value = v; out.textContent = v; out.classList.remove('p-bump'); void out.offsetWidth; out.classList.add('p-bump'); buzz(10); $('#pMinus').disabled = v === min; $('#pPlus').disabled = v === max; };
+      $('#pMinus').disabled = true;
+      $('#pMinus').addEventListener('click', () => step(-1)); $('#pPlus').addEventListener('click', () => step(1));
+      $('#pLock').addEventListener('click', () => lockIn(value));
+      return startBar();
+    }
     const buttons = Array.from({ length: s.n }, (_, i) => {
       const st = answerStyle(s.type, i);
       const opt = s.opts && s.opts[i];
@@ -166,24 +204,10 @@
         <span class="p-glyph">${st.glyph}</span>${label ? `<span class="p-label">${esc(label)}</span>` : ''}
       </button>`;
     }).join('');
-    screen.innerHTML = `${header()}
-      <div class="p-timer-row"><div class="p-timer"><span id="pBar"></span></div><span class="p-secs" id="pSecs"></span></div>
+    screen.innerHTML = `${header()}${timerRow}
       <section class="p-answers n${s.n} ${s.type}">${buttons}</section>`;
-    const bar = $('#pBar'); const secs = $('#pSecs'); let lastSec = null;
-    const tickBar = () => {
-      const left = Math.max(0, ends - Date.now()); bar.style.width = Math.min(100, (left / total) * 100) + '%';
-      const whole = Math.ceil(left / 1000);
-      if (whole !== lastSec) { lastSec = whole; secs.textContent = whole; if (whole <= 5) { document.body.dataset.urgent = '1'; if (whole > 0 && whole <= 3) buzz(12); } }
-      if (!left) clearInterval(countdown);
-    };
-    tickBar(); countdown = setInterval(tickBar, 100);
-    screen.querySelectorAll('.p-answer').forEach((b) => b.addEventListener('click', () => {
-      const i = Number(b.dataset.i);
-      answers[key] = i; try { sessionStorage.setItem('squeak-answers', JSON.stringify(answers)); } catch (e) { /* private mode */ }
-      buzz(30);
-      send(s.q, i, 0);
-      shownKey = ''; render(false);
-    }));
+    startBar();
+    screen.querySelectorAll('.p-answer').forEach((b) => b.addEventListener('click', () => lockIn(Number(b.dataset.i))));
   }
 
   function send(q, choice, attempt) {
@@ -192,10 +216,11 @@
   }
 
   function pLocked(s, picked) {
-    const st = answerStyle(s.type, picked);
+    const num = s.type === 'number';
+    const st = num ? { color: SQ.C.lime, ink: SQ.C.ink } : answerStyle(s.type, picked);
     screen.innerHTML = `${header()}
       <section class="p-center">
-        <div class="p-picked" style="--c:${st.color};--ink:${st.ink}">${st.glyph}</div>
+        <div class="p-picked ${num ? 'p-picked-num' : ''}" style="--c:${st.color};--ink:${st.ink}">${num ? `<span>${picked}</span>` : st.glyph}</div>
         <p class="kicker">Answer locked in</p>
         <h2 class="p-title">${pickLine(LOCKED, me.id + (s.k || s.q))}</h2>
         <p class="p-lede">Watch the big screen.</p>
@@ -213,6 +238,7 @@
         cls = 'right'; kicker = r.f ? 'Correct, and the fastest in the room' : r.t !== undefined && r.t < 1.5 ? 'Correct. Lightning paws.' : 'Correct'; title = `+${fmt(r.p)}`;
         sub = r.b ? `${r.st} in a row: +${fmt(r.b)} streak bonus${s.dbl ? ', doubled' : ''}.` : s.dbl ? 'Double points. ' + pickLine(RIGHT, me.id + s.q) : pickLine(RIGHT, me.id + s.q);
       } else if (r.c === false) { cls = 'wrong'; kicker = 'Not quite'; title = 'Rats.'; sub = pickLine(WRONG, me.id + s.q); }
+      if (s.type === 'number' && r.c !== true && Array.isArray(s.correct)) sub = `The answer was ${s.correct[0]}${s.unit ? ' ' + esc(s.unit) : ''}. ${r.c === false ? sub : ''}`;
       document.body.dataset.result = cls;
       const extra = [moveLine(r), gapLine(r)].filter(Boolean);
       screen.innerHTML = `${header(before)}
