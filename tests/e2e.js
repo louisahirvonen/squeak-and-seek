@@ -135,6 +135,20 @@ const server = http.createServer((req, res) => {
   check(await host.locator('.egg-run').count() === 1, 'typing "rat" on the host starts the stampede');
   await shot(host, '08-stampede.png');
 
+  // The answer screen and the leaderboard move on by themselves (shortened to 2 s here; 20 s on the night).
+  await host.evaluate(() => { SQ.cfg.autoAdvanceSeconds = 2; });
+  await host.click('#btnSkip');
+  await host.waitForSelector('.reveal', { timeout: 8000 });
+  check(await host.locator('#autoCount').count() === 1, 'the answer screen shows a countdown');
+  const toBoard = await host.waitForSelector('.leaderboard', { timeout: 6000 }).then(() => true, () => false);
+  check(toBoard, 'the answer screen moves on to the leaderboard by itself');
+  await host.click('#btnHold'); await sleep(3500);
+  check(await host.evaluate(() => window.__host.phase) === 'leaderboard', 'Pause holds the leaderboard');
+  await shot(host, '09-paused.png');
+  await host.keyboard.press('p');
+  const toNext = await host.waitForSelector('.intro', { timeout: 6000 }).then(() => true, () => false);
+  check(toNext, 'after Resume the leaderboard moves on to the next question by itself');
+
   check(errors.length === 0, `no page errors${errors.length ? ':\n  ' + errors.join('\n  ') : ''}`);
   await browser.close(); server.close();
   console.log(`\n${failures.length ? failures.length + ' check(s) failed' : 'All checks passed'}. Screenshots: tests/shots/`);

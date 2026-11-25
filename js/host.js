@@ -278,6 +278,26 @@
     if (S.phase === 'leaderboard') return nextQuestion();
   }
 
+  // The answer screen and the leaderboard move on by themselves: a countdown on the button, and a Pause next to it.
+  function autoNext() {
+    const btn = $('#btnNext'); let left = Math.round(Number(SQ.cfg.autoAdvanceSeconds ?? 20));
+    if (!btn || !(left > 0)) return;
+    const phase = S.phase; let paused = false;
+    const hold = document.createElement('button'); hold.className = 'btn ghost small'; hold.id = 'btnHold'; hold.textContent = 'Pause';
+    const wrap = document.createElement('div'); wrap.className = 'auto-wrap';
+    btn.replaceWith(wrap); wrap.append(hold, btn);
+    btn.insertAdjacentHTML('beforeend', `<span class="auto-count" id="autoCount">${left}</span>`);
+    hold.addEventListener('click', () => { paused = !paused; hold.textContent = paused ? 'Resume' : 'Pause'; wrap.classList.toggle('paused', paused); });
+    const tick = () => {
+      if (S.phase !== phase) return;
+      // Stand still while paused or while the music dialog is open.
+      if (!paused && !$('#soundDialog').open) { left -= 1; const c = $('#autoCount'); if (c) c.textContent = left; }
+      if (left <= 0) return next();
+      later(tick, 1000);
+    };
+    later(tick, 1000);
+  }
+
   function playAgain() {
     Object.values(S.players).forEach((p) => Object.assign(p, { score: 0, reachedAt: 0, streak: 0, best: 0, right: 0, climb: 0, fast: undefined }));
     S.qi = -1; S.done = 0; S.answers = {}; S.game += 1; S.prevScores = {}; S.prevRanks = {}; S.moves = false; persist(); go('lobby');
@@ -479,6 +499,7 @@
         ${answersHTML(cq, true)}
       </section>`;
     $('#btnNext').addEventListener('click', next);
+    autoNext();
   }
 
   // Count a number up (or down) in an element.
@@ -539,6 +560,7 @@
       stage.querySelectorAll('.lb-num').forEach((el) => countUp(el, Number(el.dataset.from), Number(el.dataset.to), 1400));
     }, 700);
     $('#btnNext').addEventListener('click', next);
+    autoNext();
   }
 
   // End-of-game awards, so more than three rats get a moment.
@@ -632,6 +654,7 @@
     if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); next(); }
     if (e.key === 'm' || e.key === 'M') $('#btnMute').click();
     if (e.key === 'f' || e.key === 'F') $('#btnFull').click();
+    if (e.key === 'p' || e.key === 'P') $('#btnHold')?.click();
   });
   window.addEventListener('beforeunload', (e) => { if (S.phase !== 'title' && S.phase !== 'podium') { e.preventDefault(); e.returnValue = ''; } });
   $('#btnMute').classList.toggle('muted', A.muted);

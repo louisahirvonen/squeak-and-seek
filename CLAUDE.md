@@ -49,6 +49,7 @@ On top of that (all applied in `endQuestion`): a **streak bonus** (2 right in a 
 
 Phases: `title → lobby → intro → question → reveal → leaderboard → … → podium`. Video questions stay in `intro` until the clip ends, then the timer starts.
 Host state is saved to localStorage after each reveal; "Resume room" on the title screen restores it after an accidental refresh.
+The reveal and the leaderboard advance on their own after `autoAdvanceSeconds` (config, 20; 0 turns it off) via `autoNext()`; the lobby, a video intro and the podium never do. Pause is the button next to Next, or **P**.
 Anything timed inside a phase goes through `later()` in `host.js`, which is cleared on every phase change. Don't use a bare `setTimeout` for phase behaviour.
 
 ## Easter eggs (keep them working, don't advertise them in the UI)

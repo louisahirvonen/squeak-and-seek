@@ -7,4 +7,6 @@ window.SQUEAK_CONFIG = {
   questionsFile: 'questions.json',
   // The last question is worth double (only when the quiz has 3 or more questions). Set to false to turn off.
   doubleFinal: true,
+  // The answer screen and the leaderboard move on by themselves after this many seconds (0 = only when the host clicks).
+  autoAdvanceSeconds: 20,
 };

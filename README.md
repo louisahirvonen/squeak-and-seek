@@ -15,7 +15,8 @@ Hosted on GitHub Pages; Supabase Realtime (free plan) relays messages between th
 2. Optional: open **Music & sound** to choose tracks.
 3. Click **Start party**. Players scan the QR code (or type the address and room code).
 4. Click **Start game** when everyone has joined. Use the big yellow button or press **Space** / **→** to move on.
-5. Keyboard: **M** mutes, **F** goes full screen.
+5. The answer screen and the leaderboard move on by themselves after 20 seconds (the button shows the countdown). Click the button to go sooner, or **Pause** (or press **P**) to hold. Change or turn off the timing with `autoAdvanceSeconds` in `js/config.js`.
+6. Keyboard: **M** mutes, **F** goes full screen, **P** pauses the countdown.
 
 If the host browser refreshes by accident, click **Resume room …** on the title screen. Scores and players are kept.
 

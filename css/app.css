@@ -408,7 +408,7 @@ body.host[data-urgent] .answer, body.host[data-urgent] .photo-opt { animation: p
 .mascot.mid.rv-late.hop { animation: fadeUp .5s .95s ease-out both, hop 1.2s 1.5s ease-in-out infinite; }
 .mascot.mid.rv-late.droop { animation: fadeUp .5s .95s ease-out both, droop 2.6s 1.5s ease-in-out infinite; }
 .rv-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2vh; }
-.rv-fast, .lb-callout, .pod-award { display: flex; align-items: center; gap: 12px; padding: 8px 20px 8px 8px; border-radius: 999px; background: var(--soft); }
+.rv-fast, .lb-callout, .pod-award { display: flex; align-items: center; gap: 14px; padding: 9px 36px 9px 9px; border-radius: 999px; background: var(--soft); }
 .rv-fast .avatar, .lb-callout .avatar, .pod-award .avatar { width: clamp(40px, 5.4vh, 60px); flex: none; }
 .rv-fast div, .lb-callout div, .pod-award div { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
 .rv-fast small, .lb-callout small, .pod-award small { font-weight: 700; text-transform: uppercase; letter-spacing: .14em; font-size: .7rem; opacity: .75; }
@@ -496,3 +496,8 @@ body.player[data-urgent] .p-secs { color: var(--coral); animation: pulse .5s inf
   .reveal .answer::after, .reveal .photo-opt::after { transform: scaleX(var(--share)); }
   .egg-run { display: none; }
 }
+
+/* ---------- auto-advance ---------- */
+.auto-wrap { display: flex; align-items: center; gap: 12px; flex: none; }
+.auto-count { display: inline-grid; place-items: center; min-width: 1.9em; height: 1.9em; margin-left: .6em; padding: 0 .3em; border-radius: 99px; font-size: .72em; box-shadow: inset 0 0 0 2px currentColor; opacity: .85; vertical-align: .08em; font-variant-numeric: tabular-nums; }
+.auto-wrap.paused .auto-count { opacity: .4; }
