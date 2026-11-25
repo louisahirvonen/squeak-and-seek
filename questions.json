@@ -1,10 +1,10 @@
 {
-  "title": "Squeak & Seek: testfrågor",
+  "title": "Squeak & Seek",
   "defaultTimeLimit": 20,
   "questions": [
     {
       "type": "photo",
-      "text": "Vem är Louisas bias (favourite k-pop idol)?",
+      "text": "Vem är Louisas bias (favorit k-pop idol)?",
       "options": [
         {
           "label": "V",
@@ -46,7 +46,7 @@
           "icon": "media/city-oslo.svg"
         }
       ],
-      "correct": 1
+      "correct": 0
     },
     {
       "type": "multiple",
@@ -110,25 +110,6 @@
       "correct": 6
     },
     {
-      "type": "truefalse",
-      "text": "Råttor skrattar när man kittlar dem.",
-      "correct": true
-    },
-    {
-      "type": "multiple",
-      "text": "Vilka av dessa är gnagare?",
-      "options": [
-        "Råtta",
-        "Kanin",
-        "Hamster",
-        "Igelkott"
-      ],
-      "correct": [
-        0,
-        2
-      ]
-    },
-    {
       "type": "multiple",
       "text": "Hur många tänder har en råtta?",
       "options": [
@@ -139,11 +120,6 @@
       ],
       "correct": 1,
       "timeLimit": 15
-    },
-    {
-      "type": "truefalse",
-      "text": "Råttor kan kräkas.",
-      "correct": false
     }
   ]
 }

@@ -29,7 +29,7 @@ Rat birthday theme, Spotify Wrapped–style visual design. Buttons and UI text i
 | `js/audio.js` | Host-only music picker (3 slots: lobby / question / podium), built-in WebAudio synth tracks, subtle synthesised SFX. Exposes `window.SQAudio`. |
 | `js/config.js` | Supabase settings, birthday name/age, questions file. |
 | `css/app.css` | All styling for both screens. Colour moods are driven by `body[data-phase]` (+ `data-tone` on intro, `data-result` on phone reveal). |
-| `questions.json` | Quiz content (format in README). Currently placeholder test questions. |
+| `questions.json` | Quiz content (format in README). Louisa's own questions only; don't add filler. |
 | `media/` | Question images/videos. `v.jpg`, `jimin.jpg`, `jin.jpg`, `jhope.jpg` are Louisa's own photos for the bias question, cropped to 800×1000 with the face about a third of the way down (photo answers are shown with `object-position: center 30%`). `move-*.jpg` are her pictures for the signature-move question, each whole figure placed inside the middle ~75% × 80% of the same canvas so neither the tall host card nor the squarer phone button cuts off a limb. `city-*.svg` are hand-drawn option icons (`"icon"` on a multiple-choice option). |
 | `music/music.json` | Optional MP3 list for the music picker (empty: built-in synth is used). |
 | `tests/` | Playwright end-to-end test + fixtures. |
