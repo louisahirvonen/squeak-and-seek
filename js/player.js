@@ -180,7 +180,7 @@
       const arrow = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
       screen.innerHTML = `${header()}${timerRow}
         <section class="p-number">
-          <p class="kicker">Your answer</p>
+          <p class="kicker">${s.cl ? 'Closest guess wins the most' : 'Your answer'}</p>
           <div class="p-num-row">
             <button class="p-step" id="pMinus" aria-label="Lower">${arrow('M15 5l-7 7 7 7')}</button>
             <div class="p-num"><output id="pVal">${value}</output>${s.unit ? `<small>${esc(s.unit)}</small>` : ''}</div>
@@ -238,7 +238,10 @@
         cls = 'right'; kicker = r.f ? 'Correct, and the fastest in the room' : r.t !== undefined && r.t < 1.5 ? 'Correct. Lightning paws.' : 'Correct'; title = `+${fmt(r.p)}`;
         sub = r.b ? `${r.st} in a row: +${fmt(r.b)} streak bonus${s.dbl ? ', doubled' : ''}.` : s.dbl ? 'Double points. ' + pickLine(RIGHT, me.id + s.q) : pickLine(RIGHT, me.id + s.q);
       } else if (r.c === false) { cls = 'wrong'; kicker = 'Not quite'; title = 'Rats.'; sub = pickLine(WRONG, me.id + s.q); }
-      if (s.type === 'number' && r.c !== true && Array.isArray(s.correct)) sub = `The answer was ${s.correct[0]}${s.unit ? ' ' + esc(s.unit) : ''}. ${r.c === false ? sub : ''}`;
+      const unitTxt = s.unit ? ' ' + esc(s.unit) : '';
+      if (s.cl && r.c === true && r.off > 0) { kicker = 'Closest guess in the room'; sub = `Only ${r.off} off. The answer was ${s.correct[0]}${unitTxt}.`; }
+      if (s.cl && r.c === false && r.p > 0) { cls = 'near'; kicker = r.off === 1 ? 'So close' : 'Not far off'; title = `+${fmt(r.p)}`; sub = `${r.off} off. The answer was ${s.correct[0]}${unitTxt}.`; }
+      else if (s.type === 'number' && r.c !== true && Array.isArray(s.correct)) sub = `The answer was ${s.correct[0]}${s.unit ? ' ' + esc(s.unit) : ''}. ${r.c === false ? sub : ''}`;
       document.body.dataset.result = cls;
       const extra = [moveLine(r), gapLine(r)].filter(Boolean);
       screen.innerHTML = `${header(before)}
@@ -250,7 +253,7 @@
           ${extra.length ? `<p class="p-extra">${extra.join('<br>')}</p>` : ''}
         </section>`;
       countScore(r.s);
-      if (cls === 'right') buzz(r.b ? [40, 60, 40, 60, 80] : [40, 60, 40]); else if (cls === 'wrong') buzz(120);
+      if (cls === 'right') buzz(r.b ? [40, 60, 40, 60, 80] : [40, 60, 40]); else if (cls === 'wrong') buzz(120); else if (cls === 'near') buzz(40);
     };
     // The big screen builds a moment of suspense first; hold the phone back for the same time.
     const key = `${s.k || s.q}`;

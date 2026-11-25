@@ -59,8 +59,7 @@
       ],
       "correct": [
         0,
-        1,
-        3
+        1
       ]
     },
     {
@@ -135,6 +134,18 @@
         "Tomatjuice"
       ],
       "correct": 2
+    },
+    {
+      "type": "number",
+      "text": "Hur många timmar hade Louisa sovit per dag om hon inte behövde jobba?",
+      "media": {
+        "image": "media/sleep.jpg"
+      },
+      "min": 0,
+      "max": 24,
+      "unit": "timmar",
+      "scoring": "closest",
+      "correct": 16
     },
     {
       "type": "multiple",

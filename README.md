@@ -45,7 +45,7 @@ Edit `questions.json`, commit and push. The site updates within a minute or two 
 }
 ```
 
-- A number question lets players step a counter up and down on their phone and lock it in; only the exact number counts: `{ "type": "number", "text": "Hur länge …?", "min": 0, "max": 15, "unit": "år", "correct": 6 }`.
+- A number question lets players step a counter up and down on their phone and lock it in; only the exact number counts: `{ "type": "number", "text": "Hur länge …?", "min": 0, "max": 15, "unit": "år", "correct": 6 }`. Add `"scoring": "closest"` to score by closeness instead: the closest guess in the room gets 1000 points and each step further down the ranking gets evenly less (speed doesn't matter).
 - `correct` counts from 0 (`0` = first option). Use a list like `[0, 2]` when several answers count as right. True/false uses `true` or `false`.
 - An option can carry a small picture next to its text: `{ "label": "Berlin", "icon": "media/city-berlin.svg" }` (big screen only; phones show the coloured buttons).
 - `media` adds one picture (`"image"`) or one video (`"video"`, MP4) above the question. A video plays first and the timer starts when it ends.

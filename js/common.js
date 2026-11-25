@@ -108,7 +108,7 @@
         const min = Number.isFinite(Number(q.min)) ? Math.round(Number(q.min)) : 0;
         const max = Number.isFinite(Number(q.max)) ? Math.round(Number(q.max)) : 20;
         const c = Number(q.correct);
-        options = []; correct = [c]; extra = { min, max, unit: String(q.unit ?? '') };
+        options = []; correct = [c]; extra = { min, max, unit: String(q.unit ?? ''), closest: q.scoring === 'closest' };
         if (max <= min) errors.push(`Question ${n}: "max" must be larger than "min".`);
         if (!Number.isInteger(c) || c < min || c > max) errors.push(`Question ${n}: "correct" must be a whole number from ${min} to ${max}.`);
       } else if (type === 'truefalse') {

@@ -53,6 +53,14 @@
       "correct": 3
     },
     {
+      "type": "number",
+      "text": "Hur många råttor får plats?",
+      "min": 0,
+      "max": 10,
+      "scoring": "closest",
+      "correct": 4
+    },
+    {
       "type": "multiple",
       "text": "Vilka av dessa är gnagare?",
       "options": [

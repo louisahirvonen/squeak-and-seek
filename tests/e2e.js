@@ -89,7 +89,7 @@ const server = http.createServer((req, res) => {
     await sleep(600);
     await shot(host, `04-question-q${qi}.png`);
     await shot(players[0], `p-04-question-q${qi}.png`);
-    const Q = await host.evaluate(() => { const q = window.__host.questions[window.__host.qi]; return { correct: q.correct, n: q.options.length, type: q.type, min: q.min }; });
+    const Q = await host.evaluate(() => { const q = window.__host.questions[window.__host.qi]; return { correct: q.correct, n: q.options.length, type: q.type, min: q.min, closest: q.closest }; });
     const wrong = Q.type === 'number' ? Q.correct[0] + 1 : [...Array(Q.n).keys()].find((i) => !Q.correct.includes(i));
     await answer(players[0], Q, Q.correct[0]);
     await sleep(250);
@@ -98,6 +98,11 @@ const server = http.createServer((req, res) => {
     else { await sleep(300); await host.click('#btnSkip'); }
     await host.waitForSelector('.reveal', { timeout: 8000 });
     await sleep(2100); // the reveal holds the right answer back for a moment
+    if (Q.closest) {
+      const near = await host.evaluate(() => { const S = window.__host; const id = Object.keys(S.players).find((k) => S.players[k].name === 'Brie Brie'); return S.answers[id]; });
+      check(near && !near.correct && near.points > 0 && near.points < 1000, `closest-guess question gives part of the points for a near miss (${near && near.points})`);
+      await shot(players[1], 'p-05-near.png');
+    }
     await shot(host, `05-reveal-q${qi}.png`);
     for (let i = 0; i < 3; i++) await shot(players[i], `p-05-reveal-q${qi}-p${i}.png`);
     await host.click('#btnNext');

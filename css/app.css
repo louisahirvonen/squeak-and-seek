@@ -549,3 +549,11 @@ body.player[data-urgent] .p-secs { color: var(--coral); animation: pulse .5s inf
   .num-col.correct .num-bar { background: var(--lime); }
   .num-col.wrong { opacity: .18; }
 }
+
+/* closest-guess scoring */
+.num-hint b { display: block; margin-top: .5em; color: var(--lime); font-weight: 700; }
+.num-col.closest .num-bar { animation: growY .6s .1s cubic-bezier(.2,.8,.2,1) both, toPink .3s .9s forwards; }
+.num-col.closest .num-val { color: var(--pink); opacity: 1; }
+@keyframes toPink { to { background: var(--pink); } }
+body.player[data-result="near"] { --bg: var(--sky); --fg: var(--ink); --soft: rgba(11,11,15,.12); }
+@media (prefers-reduced-motion: reduce) { .num-col.closest .num-bar { background: var(--pink); } }
