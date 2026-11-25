@@ -26,6 +26,67 @@
       "correct": 0
     },
     {
+      "type": "multiple",
+      "text": "Var föddes Louisa?",
+      "options": [
+        {
+          "label": "Bern",
+          "icon": "media/city-bern.svg"
+        },
+        {
+          "label": "Berlin",
+          "icon": "media/city-berlin.svg"
+        },
+        {
+          "label": "Borås",
+          "icon": "media/city-boras.svg"
+        },
+        {
+          "label": "Oslo",
+          "icon": "media/city-oslo.svg"
+        }
+      ],
+      "correct": 1
+    },
+    {
+      "type": "multiple",
+      "text": "Vad ser Louisa mest fram emot i livet?",
+      "options": [
+        "Gifta sig",
+        "Skaffa råttor",
+        "Skaffa barn",
+        "Vinna SM i pole dance"
+      ],
+      "correct": [
+        0,
+        1,
+        3
+      ]
+    },
+    {
+      "type": "photo",
+      "text": "Vilket är Louisas signature move?",
+      "options": [
+        {
+          "label": "Layback",
+          "image": "media/move-layback.jpg"
+        },
+        {
+          "label": "Iron X",
+          "image": "media/move-iron-x.jpg"
+        },
+        {
+          "label": "Genie",
+          "image": "media/move-genie.jpg"
+        },
+        {
+          "label": "Shouldermount",
+          "image": "media/move-shouldermount.jpg"
+        }
+      ],
+      "correct": 0
+    },
+    {
       "type": "truefalse",
       "text": "Råttor skrattar när man kittlar dem.",
       "correct": true

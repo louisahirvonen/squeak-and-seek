@@ -108,7 +108,7 @@
         correct = [...new Set(c.map((v) => (v === true || v === 'true' || v === 0 ? 0 : 1)))];
         if (q.correct === undefined) errors.push(`Question ${n}: true/false needs "correct": true or false.`);
       } else {
-        options = (q.options || []).map((o) => (typeof o === 'string' || typeof o === 'number' ? { label: String(o) } : { label: String(o.label ?? ''), image: o.image }));
+        options = (q.options || []).map((o) => (typeof o === 'string' || typeof o === 'number' ? { label: String(o) } : { label: String(o.label ?? ''), image: o.image, icon: o.icon }));
         if (options.length < 2 || options.length > 4) errors.push(`Question ${n}: needs 2–4 options (has ${options.length}).`);
         if (type === 'photo' && options.some((o) => !o.image)) errors.push(`Question ${n}: every option of a photo question needs an "image".`);
         const c = Array.isArray(q.correct) ? q.correct : [q.correct];

@@ -46,6 +46,7 @@ Edit `questions.json`, commit and push. The site updates within a minute or two 
 ```
 
 - `correct` counts from 0 (`0` = first option). Use a list like `[0, 2]` when several answers count as right. True/false uses `true` or `false`.
+- An option can carry a small picture next to its text: `{ "label": "Berlin", "icon": "media/city-berlin.svg" }` (big screen only; phones show the coloured buttons).
 - `media` adds one picture (`"image"`) or one video (`"video"`, MP4) above the question. A video plays first and the timer starts when it ends.
 - Put pictures and videos in the `media` folder. Keep videos under 25 MB.
 - `timeLimit` (seconds) is optional per question.

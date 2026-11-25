@@ -504,3 +504,6 @@ body.player[data-urgent] .p-secs { color: var(--coral); animation: pulse .5s inf
 
 /* photo answers: keep the face in frame whatever shape the box is */
 .photo-opt img, .p-answer img { object-position: center 30%; }
+
+/* small picture next to an answer's text (big screen) */
+.answer-icon { flex: none; width: 9vh; height: 9vh; padding: .7vh; border-radius: 20px; background: var(--paper); object-fit: contain; }
