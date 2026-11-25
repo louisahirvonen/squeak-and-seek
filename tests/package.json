@@ -1,0 +1,7 @@
+{
+  "name": "squeak-and-seek-tests",
+  "private": true,
+  "description": "End-to-end test for Squeak & Seek (Playwright, local transport mode).",
+  "scripts": { "test": "node e2e.js" },
+  "devDependencies": { "playwright": "^1.50.0" }
+}

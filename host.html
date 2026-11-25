@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Squeak &amp; Seek · Host</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23D2F65A'/><circle cx='28' cy='40' r='15' fill='white'/><circle cx='72' cy='40' r='15' fill='white'/><ellipse cx='50' cy='62' rx='27' ry='24' fill='white'/><circle cx='40' cy='60' r='5' fill='%231E3FD9'/><circle cx='60' cy='60' r='5' fill='%231E3FD9'/></svg>">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="host">
+  <header class="bar" id="bar" hidden>
+    <div class="bar-left"><span class="brand">Squeak <em>&amp;</em> Seek</span><span class="code-chip" id="barCode"></span></div>
+    <div class="bar-mid" id="barProgress"></div>
+    <div class="bar-right">
+      <button class="icon-btn" id="btnSound" title="Music &amp; sound" aria-label="Music and sound"><svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="16" r="3" fill="currentColor"/></svg></button>
+      <button class="icon-btn" id="btnMute" title="Mute (M)" aria-label="Mute"><svg class="on" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg class="off" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="icon-btn" id="btnFull" title="Full screen (F)" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+  </header>
+  <main id="stage" class="stage"></main>
+  <dialog id="soundDialog" class="sound-dialog"><div id="soundBody"></div><form method="dialog"><button class="btn primary">Done</button></form></dialog>
+
+  <script src="vendor/supabase.js"></script>
+  <script src="vendor/qrcode.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/host.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+{
+  "title": "Squeak & Seek: testfrågor",
+  "defaultTimeLimit": 20,
+  "questions": [
+    {
+      "type": "photo",
+      "text": "Vem är Louisas bias?",
+      "options": [
+        {
+          "label": "V",
+          "image": "media/placeholder-v.svg"
+        },
+        {
+          "label": "Jimin",
+          "image": "media/placeholder-jimin.svg"
+        },
+        {
+          "label": "Jin",
+          "image": "media/placeholder-jin.svg"
+        },
+        {
+          "label": "J-Hope",
+          "image": "media/placeholder-jhope.svg"
+        }
+      ],
+      "correct": 0
+    },
+    {
+      "type": "truefalse",
+      "text": "Råttor skrattar när man kittlar dem.",
+      "correct": true
+    },
+    {
+      "type": "multiple",
+      "text": "Vilka av dessa är gnagare?",
+      "options": [
+        "Råtta",
+        "Kanin",
+        "Hamster",
+        "Igelkott"
+      ],
+      "correct": [
+        0,
+        2
+      ]
+    },
+    {
+      "type": "multiple",
+      "text": "Hur många tänder har en råtta?",
+      "options": [
+        "12",
+        "16",
+        "24",
+        "32"
+      ],
+      "correct": 1,
+      "timeLimit": 15
+    },
+    {
+      "type": "truefalse",
+      "text": "Råttor kan kräkas.",
+      "correct": false
+    }
+  ]
+}
