@@ -15,13 +15,12 @@ Party: **Saturday 28 November 2026**. Build window: Thursday + Friday, rehearsal
 
 The first web upload put every file under `squeak-and-seek/` inside the repo, so the live URLs currently are `…/squeak-and-seek/squeak-and-seek/host.html` and still run the old design with the join bug. This folder is the new source of truth. Pages is set to `main` / root.
 
+This folder now lives at `~/Desktop/rat-party` and is already a git repository on `main` (moved there 2026-11-25), with no remote yet. What is left:
+
 ```bash
-cd squeak-and-seek            # this folder
-git init -b main
-git add .
-git commit -m "Redesign, join fix, tests and agent docs"
+cd ~/Desktop/rat-party        # this folder
 git remote add origin https://github.com/louisahirvonen/squeak-and-seek.git
-git push --force origin main  # overwrites the single web-upload commit
+git push --force origin main  # overwrites what is on GitHub; this history does not share a commit with it
 ```
 
 After 1–2 minutes: https://louisahirvonen.github.io/squeak-and-seek/host.html. Hard-refresh (Cmd+Shift+R); GitHub Pages caches for ~10 minutes. From then on, normal `git pull` / `git push`.
