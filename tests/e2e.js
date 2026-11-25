@@ -26,7 +26,7 @@ const server = http.createServer((req, res) => {
 (async () => {
   await new Promise((r) => server.listen(PORT, r));
   fs.mkdirSync(SHOTS, { recursive: true });
-  const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+  const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] });
   const ctx = await browser.newContext();
   const errors = [];
   const watch = (p, tag) => {

@@ -110,6 +110,33 @@
       "correct": 6
     },
     {
+      "type": "truefalse",
+      "text": "Melodifestivalen är årets högtid.",
+      "correct": true
+    },
+    {
+      "type": "multiple",
+      "text": "Vad var Louisas mål för 2026?",
+      "options": [
+        "Läsa ut The Count of Monte Cristo",
+        "Lära sig japanska",
+        "Komma in i en bra städrutin",
+        "Gå ner i split"
+      ],
+      "correct": 3
+    },
+    {
+      "type": "multiple",
+      "text": "Vad ska man ge Louisa om hon har haft en dålig dag?",
+      "options": [
+        "Marabou",
+        "Frusna ärtor",
+        "Druvor",
+        "Tomatjuice"
+      ],
+      "correct": 2
+    },
+    {
       "type": "multiple",
       "text": "Hur många tänder har en råtta?",
       "options": [
