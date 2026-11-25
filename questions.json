@@ -111,7 +111,10 @@
     {
       "type": "truefalse",
       "text": "Melodifestivalen är årets högtid.",
-      "correct": true
+      "correct": true,
+      "media": {
+        "image": "media/mello.jpg"
+      }
     },
     {
       "type": "multiple",
@@ -136,6 +139,17 @@
       "correct": 2
     },
     {
+      "type": "multiple",
+      "text": "Vad heter dokumentären som har gjorts om byn Louisa växte upp i?",
+      "options": [
+        "Ett liv bland kor, skog och kristendom",
+        "Församlingen, domedagen och våldtäkterna",
+        "Bönen, bygden och tystnaden",
+        "Adventister: livsstilen som får dig att bli 100"
+      ],
+      "correct": 1
+    },
+    {
       "type": "number",
       "text": "Hur många timmar hade Louisa sovit per dag om hon inte behövde jobba?",
       "media": {
@@ -157,7 +171,10 @@
         "32"
       ],
       "correct": 1,
-      "timeLimit": 15
+      "timeLimit": 15,
+      "media": {
+        "image": "media/rat-nose.jpg"
+      }
     }
   ]
 }

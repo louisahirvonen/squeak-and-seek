@@ -477,9 +477,10 @@
         </figure>`;
       }).join('')}</div>`;
     }
+    const long = cq.options.some((o) => o.label.length > 34); // one long answer: all four get the smaller size, so they match
     return `<div class="answer-grid n${cq.options.length} ${cq.type}">${cq.options.map((o, i) => {
       const st = answerStyle(cq.type, i); const ok = cq.correct.includes(i);
-      return `<div class="answer ${o.label.length > 34 ? 'long' : ''} ${reveal ? (ok ? 'correct' : 'wrong') : ''}" style="--c:${st.color};--ink:${st.ink};--share:${share(i)}">
+      return `<div class="answer ${long ? 'long' : ''} ${reveal ? (ok ? 'correct' : 'wrong') : ''}" style="--c:${st.color};--ink:${st.ink};--share:${share(i)}">
         <span class="chip">${st.glyph}</span>${o.icon ? `<img class="answer-icon" src="${esc(o.icon)}" alt="">` : ''}<span class="label">${esc(o.label)}</span>
         ${reveal ? `<span class="count">${S.counts[i]}</span>${ok ? tick : ''}` : ''}
       </div>`;
