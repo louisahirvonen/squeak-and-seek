@@ -501,3 +501,6 @@ body.player[data-urgent] .p-secs { color: var(--coral); animation: pulse .5s inf
 .auto-wrap { display: flex; align-items: center; gap: 12px; flex: none; }
 .auto-count { display: inline-grid; place-items: center; min-width: 1.9em; height: 1.9em; margin-left: .6em; padding: 0 .3em; border-radius: 99px; font-size: .72em; box-shadow: inset 0 0 0 2px currentColor; opacity: .85; vertical-align: .08em; font-variant-numeric: tabular-nums; }
 .auto-wrap.paused .auto-count { opacity: .4; }
+
+/* photo answers: keep the face in frame whatever shape the box is */
+.photo-opt img, .p-answer img { object-position: center 30%; }

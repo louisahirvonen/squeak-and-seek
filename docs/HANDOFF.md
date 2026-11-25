@@ -29,7 +29,7 @@ After 1–2 minutes: https://louisahirvonen.github.io/squeak-and-seek/host.html.
 
 1. **Smoke test on the live site** after the push: host on the work laptop, join from a phone on mobile data and on Wi-Fi.
 2. **Real questions** from Louisa → `questions.json` (Swedish). Validate by loading `host.html`: problems are listed on the title screen.
-3. **Bias question photos** (V, Jimin, Jin, J-Hope; V is correct). Louisa supplies the files; use exactly those, don't source images of real people from the web. Crop to the same square size (~800×800), compress to under ~300 KB (e.g. `sips -Z 800` + JPEG quality 80 on macOS), save as `media/v.jpg` etc., update the first question, delete `media/placeholder-*.svg`.
+3. ~~Bias question photos~~ Done 2026-11-25: Louisa's four photos are in `media/` (800×1000 JPEG, under 220 KB each) and the placeholders are gone. The V source was only 236 px wide, so it is a little soft on a big screen; swap in a larger file if she has one. Don't source images of real people from the web.
 4. **Music** (optional): drop MP3s in `music/` and list them in `music/music.json` with a credit line. Suggested CC BY 4.0 tracks by Kevin MacLeod (incompetech.com): "Monkeys Spinning Monkeys", "Sneaky Snitch", "Fluffing a Duck". The real Kahoot theme is copyrighted: never commit it; Louisa can pick it as a local file on the night if she wants.
 5. **Rehearsal** with a few colleagues on the projector; tweak text sizes/timings.
 6. The morning of the party: open the Supabase dashboard to make sure the project isn't paused.

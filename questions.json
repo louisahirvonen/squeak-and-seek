@@ -4,23 +4,23 @@
   "questions": [
     {
       "type": "photo",
-      "text": "Vem är Louisas bias?",
+      "text": "Vem är Louisas bias (favourite k-pop idol)?",
       "options": [
         {
           "label": "V",
-          "image": "media/placeholder-v.svg"
+          "image": "media/v.jpg"
         },
         {
           "label": "Jimin",
-          "image": "media/placeholder-jimin.svg"
+          "image": "media/jimin.jpg"
         },
         {
           "label": "Jin",
-          "image": "media/placeholder-jin.svg"
+          "image": "media/jin.jpg"
         },
         {
           "label": "J-Hope",
-          "image": "media/placeholder-jhope.svg"
+          "image": "media/jhope.jpg"
         }
       ],
       "correct": 0
