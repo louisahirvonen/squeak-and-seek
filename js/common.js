@@ -72,10 +72,11 @@
   const pick = (id) => { const h = hash(id); return { fur: FURS[h % FURS.length], badge: BADGES[(h >>> 3) % BADGES.length], hat: BADGES[(h >>> 7) % BADGES.length] }; };
   const playerRat = (id, opts = {}) => { const p = pick(id); return ratSVG({ fur: p.fur, eye: p.fur === '#3A3842' ? '#F4F1EA' : C.ink, hat: p.hat === p.badge ? C.ink : p.hat, hat2: C.paper, ...opts }); };
   // Round avatar badge: rat face on a coloured disc.
-  function avatar(id, cls = '') {
-    const p = pick(id);
+  // bday = true draws the birthday rat herself (white fur, blue eyes, party hat) whatever the id.
+  function avatar(id, cls = '', bday = false) {
+    const p = bday ? { fur: '#FFFFFF', badge: C.pink } : pick(id);
     const dark = p.fur === '#3A3842';
-    const eye = dark ? '#F4F1EA' : C.ink;
+    const eye = bday ? '#1E3FD9' : dark ? '#F4F1EA' : C.ink;
     return `<svg class="avatar ${cls}" viewBox="0 0 100 100" aria-hidden="true">
   <circle cx="50" cy="50" r="50" fill="${p.badge}"/>
   <circle cx="27" cy="42" r="15" fill="${p.fur}"/><circle cx="27" cy="42" r="9" fill="${dark ? '#E07A9B' : '#FFB4C8'}"/>
@@ -83,8 +84,10 @@
   <ellipse cx="50" cy="64" rx="27" ry="24" fill="${p.fur}"/>
   <ellipse cx="40" cy="61" rx="4.6" ry="5.4" fill="${eye}"/><ellipse cx="60" cy="61" rx="4.6" ry="5.4" fill="${eye}"/>
   <ellipse cx="50" cy="71" rx="4" ry="3" fill="#FF7EA6"/>
+  ${bday ? `<path d="M37 43 L50 12 L63 43 Z" fill="${C.lime}"/><circle cx="50" cy="11" r="5" fill="${C.paper}"/>` : ''}
 </svg>`;
   }
+  const isBirthday = (name) => String(name || '').trim().toLowerCase() === String(cfg.birthdayName || '').trim().toLowerCase();
 
   // ---------- Questions ----------
   function normalizeQuestions(data) {
@@ -119,6 +122,11 @@
   }
 
   const pointsFor = (seconds, limit) => { const t = Math.max(0, Math.min(seconds, limit)); return Math.round(1000 * (1 - t / (2 * limit))); };
+
+  // Streak bonus: 2 right in a row = +100, 3 = +200, 4 or more = +300.
+  const streakBonus = (streak) => Math.max(0, Math.min(streak - 1, 3)) * 100;
+  // Stable pick from a list (same seed, same line), so a re-render never changes the text.
+  const pickLine = (list, seed) => list[hash(seed) % list.length];
 
   // ---------- Transport ----------
   // Two topics per room: "squeak-CODE" (host -> phones) and "squeak-CODE-host" (phones -> host only).
@@ -178,7 +186,7 @@
   document.addEventListener('visibilitychange', () => { if (lock && document.visibilityState === 'visible') keepAwake(); });
 
   // ---------- Confetti ----------
-  function confetti(duration = 3500) {
+  function confetti(duration = 3500, kind = 'paper') {
     const c = document.createElement('canvas');
     c.className = 'confetti';
     document.body.appendChild(c);
@@ -186,15 +194,19 @@
     const dpr = window.devicePixelRatio || 1;
     const resize = () => { c.width = innerWidth * dpr; c.height = innerHeight * dpr; };
     resize();
-    const colors = [C.lime, C.pink, C.sky, C.orange, C.lilac, C.paper];
+    const cheese = kind === 'cheese';
+    const colors = cheese ? ['#FFD23F', '#FFC21A', C.lime, C.paper] : [C.lime, C.pink, C.sky, C.orange, C.lilac, C.paper];
     const parts = Array.from({ length: 180 }, () => ({
-      x: Math.random() * c.width, y: -Math.random() * c.height * 0.6, w: (6 + Math.random() * 8) * dpr, h: (8 + Math.random() * 10) * dpr,
+      x: Math.random() * c.width, y: -Math.random() * c.height * 0.6, w: (6 + Math.random() * 8) * dpr * (cheese ? 2.2 : 1), h: (8 + Math.random() * 10) * dpr * (cheese ? 1.6 : 1),
       vx: (Math.random() - 0.5) * 3 * dpr, vy: (2 + Math.random() * 4) * dpr, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3, col: colors[Math.floor(Math.random() * colors.length)],
     }));
     const start = performance.now();
     (function frame(now) {
       ctx.clearRect(0, 0, c.width, c.height);
-      parts.forEach((p) => { p.x += p.vx; p.y += p.vy; p.vy += 0.05 * dpr; p.r += p.vr; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.col; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore(); });
+      parts.forEach((p) => { p.x += p.vx; p.y += p.vy; p.vy += 0.05 * dpr; p.r += p.vr; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.col;
+        if (cheese) { ctx.beginPath(); ctx.moveTo(-p.w / 2, p.h / 2); ctx.lineTo(p.w / 2, p.h / 2); ctx.lineTo(p.w / 2, -p.h / 2); ctx.closePath(); ctx.fill(); ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath(); ctx.arc(p.w * 0.18, p.h * 0.2, p.w * 0.1, 0, 7); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
+        else ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore(); });
       if (now - start < duration) requestAnimationFrame(frame); else c.remove();
     })(start);
   }
@@ -202,5 +214,5 @@
   const ordinal = (n) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
-  window.SQ = { cfg, params, isLocal, escapeHtml, uid, hash, C, GLYPHS, ANSWERS, TF, answerStyle, ratSVG, birthdayRat, playerRat, avatar, normalizeQuestions, pointsFor, connect, keepAwake, confetti, ordinal, fmt };
+  window.SQ = { cfg, params, isLocal, escapeHtml, uid, hash, C, GLYPHS, ANSWERS, TF, answerStyle, ratSVG, birthdayRat, playerRat, avatar, isBirthday, normalizeQuestions, pointsFor, streakBonus, pickLine, connect, keepAwake, confetti, ordinal, fmt };
 })();

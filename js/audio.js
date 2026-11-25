@@ -49,7 +49,12 @@
   }
   const sfx = {
     squeak() { const p = 1 + Math.random() * 0.25; tone({ f0: 1700 * p, f1: 2600 * p, dur: 0.07, gain: 0.07 }); tone({ f0: 2600 * p, f1: 2000 * p, dur: 0.07, gain: 0.06, at: 0.07 }); },
-    tick() { tone({ type: 'square', f0: 1300, dur: 0.035, gain: 0.03, filter: 3000 }); },
+    // n = seconds left: the tick climbs in pitch and gets a low thump under it as time runs out.
+    tick(n = 5) { const up = 1 + (5 - Math.max(1, Math.min(n, 5))) * 0.09; tone({ type: 'square', f0: 1300 * up, dur: 0.04, gain: 0.04, filter: 3400 }); tone({ f0: 90, f1: 55, dur: 0.12, gain: 0.1 }); },
+    // Snare-style roll that swells for `dur` seconds.
+    roll(dur = 1) { for (let t = 0; t < dur; t += 0.045) noise({ dur: 0.05, gain: 0.025 + 0.06 * (t / dur), from: 1800, to: 900, at: t, q: 0.6 }); },
+    blip(i = 0) { tone({ type: 'triangle', f0: 520 * Math.pow(1.12, i), dur: 0.09, gain: 0.05 }); },
+    fanfare() { [[523, 0, 0.14], [659, 0.14, 0.14], [784, 0.28, 0.14], [1047, 0.42, 0.7]].forEach(([f, at, dur]) => { tone({ type: 'sawtooth', f0: f, dur, gain: 0.06, at, filter: 2600 }); tone({ type: 'triangle', f0: f * 2, dur, gain: 0.03, at }); }); },
     chime() { tone({ f0: 880, dur: 0.5, gain: 0.08 }); tone({ f0: 1320, dur: 0.7, gain: 0.07, at: 0.11 }); tone({ f0: 1760, dur: 0.8, gain: 0.04, at: 0.22 }); },
     womp() { tone({ type: 'sawtooth', f0: 240, f1: 120, dur: 0.35, gain: 0.06, filter: 900 }); tone({ type: 'sawtooth', f0: 180, f1: 80, dur: 0.55, gain: 0.06, at: 0.32, filter: 700 }); },
     whoosh() { noise({ dur: 0.45, gain: 0.05, from: 300, to: 2500 }); },
@@ -83,8 +88,8 @@
     ensure();
     const song = SONGS[name] || SONGS.lobby;
     const out = ctx.createGain(); out.gain.value = 0.9; out.connect(musicBus);
-    const s = { step: 0, next: ctx.currentTime + 0.08, out, timer: null };
-    const sixteenth = 60 / song.bpm / 4;
+    const s = { step: 0, next: ctx.currentTime + 0.08, out, timer: null, rate: 1 };
+    const base = 60 / song.bpm / 4;
     const note = (type, freq, t, len, gain, cutoff) => {
       const o = ctx.createOscillator(); const g = ctx.createGain(); const f = ctx.createBiquadFilter();
       o.type = type; o.frequency.setValueAtTime(freq, t);
@@ -102,6 +107,7 @@
     const kick = (t) => { const o = ctx.createOscillator(); const g = ctx.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.16); };
     function schedule() {
       while (s.next < ctx.currentTime + 0.15) {
+        const sixteenth = base / s.rate;
         const i = s.step; const t = s.next + (i % 2 ? sixteenth * song.swing : 0);
         const b = song.bass[i % song.bass.length]; if (b) note('square', N(b), t, sixteenth * 0.8, 0.07, 900);
         const m = song.mel[i % song.mel.length]; if (m) note('triangle', N(m), t, sixteenth * 0.9, 0.09, 4000);
@@ -118,7 +124,9 @@
 
   // ---------- Music player ----------
   let audioEl = null; let currentSlot = null;
-  function stopMusic() { stopSynth(); if (audioEl) { audioEl.pause(); audioEl.removeAttribute('src'); audioEl.load(); } currentSlot = null; }
+  // Last seconds of a question: the music speeds up a little.
+  function hurry(on) { if (synth) synth.rate = on ? 1.22 : 1; if (audioEl) audioEl.playbackRate = on ? 1.12 : 1; }
+  function stopMusic() { stopSynth(); if (audioEl) { audioEl.playbackRate = 1; audioEl.pause(); audioEl.removeAttribute('src'); audioEl.load(); } currentSlot = null; }
   function playSlot(slot) {
     ensure();
     if (currentSlot === slot) return;
@@ -195,5 +203,5 @@
   }
   function toggleMute() { ensure(); state.muted = !state.muted; save(); applyVolume(); return state.muted; }
 
-  window.SQAudio = { ensure, sfx, playSlot, stopMusic, pauseMusic, resumeMusic, loadTracks, panelHTML, bindPanel, toggleMute, credits, get muted() { return state.muted; }, get current() { return currentSlot; } };
+  window.SQAudio = { ensure, sfx, playSlot, hurry, stopMusic, pauseMusic, resumeMusic, loadTracks, panelHTML, bindPanel, toggleMute, credits, get muted() { return state.muted; }, get current() { return currentSlot; } };
 })();

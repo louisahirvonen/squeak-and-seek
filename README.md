@@ -19,6 +19,10 @@ Hosted on GitHub Pages; Supabase Realtime (free plan) relays messages between th
 
 If the host browser refreshes by accident, click **Resume room …** on the title screen. Scores and players are kept.
 
+### Scoring
+
+A correct answer gives 500–1000 points depending on speed. Answering right several times in a row adds a streak bonus (+100, +200, then +300 per question). The last question is worth double; set `doubleFinal: false` in `js/config.js` to turn that off. The podium also hands out three small awards: fastest paw, hottest streak and comeback rat.
+
 ## Editing questions
 
 Edit `questions.json`, commit and push. The site updates within a minute or two (hard-refresh the host screen).

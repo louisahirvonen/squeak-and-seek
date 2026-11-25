@@ -5,4 +5,6 @@ window.SQUEAK_CONFIG = {
   birthdayName: 'Louisa',
   birthdayAge: 24,
   questionsFile: 'questions.json',
+  // The last question is worth double (only when the quiz has 3 or more questions). Set to false to turn off.
+  doubleFinal: true,
 };

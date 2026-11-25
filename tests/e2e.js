@@ -67,6 +67,9 @@ const server = http.createServer((req, res) => {
   await sleep(1500);
   const joined = await host.evaluate(() => Object.values(window.__host.players).map((x) => x.name).sort());
   check(JSON.stringify(joined) === JSON.stringify([...names].sort()), `all players joined the lobby (${joined.join(', ')})`);
+  // Lobby easter egg: tapping your rat on the phone squeaks on the big screen.
+  await players[0].click('#btnSqueak'); await sleep(300);
+  check(await host.evaluate(() => window.__host.squeaks) === 1, 'tapping your rat in the lobby reaches the host');
   await shot(host, '02-lobby.png');
   await shot(players[0], 'p-01-lobby.png');
 
@@ -88,13 +91,13 @@ const server = http.createServer((req, res) => {
     if (qi % 2 === 0) { await sleep(250); await players[2].click(`.p-answer[data-i="${Q.correct[0]}"]`); }
     else { await sleep(300); await host.click('#btnSkip'); }
     await host.waitForSelector('.reveal', { timeout: 8000 });
-    await sleep(900);
+    await sleep(2100); // the reveal holds the right answer back for a moment
     await shot(host, `05-reveal-q${qi}.png`);
     for (let i = 0; i < 3; i++) await shot(players[i], `p-05-reveal-q${qi}-p${i}.png`);
     await host.click('#btnNext');
     await sleep(2200);
+    if (qi < total - 1) { await sleep(600); await shot(host, `06-leaderboard-q${qi}.png`); await shot(players[1], `p-06-leaderboard-q${qi}.png`); }
     if (qi === 1) {
-      await shot(host, '06-leaderboard.png');
       // Simulate an accidental refresh of the big screen and resume.
       host.on('dialog', (d) => d.accept());
       await host.reload(); await sleep(800);
@@ -103,7 +106,8 @@ const server = http.createServer((req, res) => {
       check(st.phase === 'leaderboard' && st.players === 3, `host resumes after refresh (${st.phase}, ${st.players} players)`);
     }
   }
-  await sleep(3500);
+  await shot(players[0], 'p-07-podium-drumroll.png');
+  await sleep(9500); // third, second, drumroll, first, then the awards
   await shot(host, '07-podium.png');
   for (let i = 0; i < 3; i++) await shot(players[i], `p-07-podium-p${i}.png`);
 
@@ -111,10 +115,25 @@ const server = http.createServer((req, res) => {
   console.log('      scores', JSON.stringify(scores));
   check(scores['Cheddar Chad'] > scores['Gouda Gal'] && scores['Gouda Gal'] > scores['Brie Brie'], 'ranking matches answers given');
   check(scores['Brie Brie'] > 0, 'multiple-correct question awards points for the second correct option');
+  const chad = await host.evaluate(() => Object.values(window.__host.players).find((p) => p.name === 'Cheddar Chad'));
+  check(chad.best === total && chad.score > total * 1000, `streak bonus and double final are counted (best streak ${chad.best}, ${chad.score} pts)`);
 
   await players[1].reload(); await sleep(1500);
   const rejoin = (await players[1].textContent('#screen')).replace(/\s+/g, ' ');
   check(/Final results/.test(rejoin), 'player rejoins automatically after reloading the page');
+
+  // Regression: after "Play again" the same question numbers come round again; phones must be able to answer them.
+  await host.click('#btnAgain'); await sleep(600);
+  await host.click('#btnGo');
+  await host.waitForSelector('#timer', { timeout: 20000 }); await sleep(500);
+  const canAnswer = await players[0].locator('.p-answer').count();
+  check(canAnswer > 0, `phones can answer again after "Play again" (${canAnswer} buttons)`);
+  await players[0].click('.p-answer[data-i="0"]'); await sleep(400);
+  check(await host.evaluate(() => Object.keys(window.__host.answers).length) === 1, 'the replayed answer reaches the host');
+  // Easter egg: typing "rat" on the host keyboard sends rats running across the screen.
+  await host.keyboard.type('rat'); await sleep(300);
+  check(await host.locator('.egg-run').count() === 1, 'typing "rat" on the host starts the stampede');
+  await shot(host, '08-stampede.png');
 
   check(errors.length === 0, `no page errors${errors.length ? ':\n  ' + errors.join('\n  ') : ''}`);
   await browser.close(); server.close();

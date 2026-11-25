@@ -34,8 +34,13 @@ After 1–2 minutes: https://louisahirvonen.github.io/squeak-and-seek/host.html.
 5. **Rehearsal** with a few colleagues on the projector; tweak text sizes/timings.
 6. The morning of the party: open the Supabase dashboard to make sure the project isn't paused.
 
+## Party polish (branch `polish/party-feel`, 2026-11-25, not yet merged to `main`)
+
+- Bugs fixed: phones could not answer after "Play again" or after a host refresh re-asked a question; a double key press could skip a screen; a question never ended while the host tab was in the background; the join link broke if the host was opened as `/host` without `.html`; podium phones showed the final place before the big screen did; phone confetti could fire twice; the phone timer bar started full for late joiners.
+- Added: streak bonus, double-points final question, staged answer reveal with answer-share bars and "fastest paw", animated leaderboard (rows slide, scores count up, movement arrows, biggest climber, gap to the lead), staged podium with drumroll, awards and the full standings, last-five-seconds tension (faster music, rising ticks, red pulse), who has answered / who we are waiting for, colour wipe between screens, richer phone result screens, easter eggs (see CLAUDE.md).
+- Still to try on real hardware: the sound mix on the projector speakers, and vibration on iPhones (Safari has no vibration; Android does).
+
 ## Nice-to-haves (only if time allows)
 
-- Streak bonus / "biggest climber" callout on the leaderboard.
 - Show the question text on phones for accessibility (currently big screen only, by design).
 - A "next question preview" for the host.
