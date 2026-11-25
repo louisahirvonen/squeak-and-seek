@@ -7,10 +7,6 @@
       "text": "Vem är Louisas bias (favorit k-pop idol)?",
       "options": [
         {
-          "label": "V",
-          "image": "media/v.jpg"
-        },
-        {
           "label": "Jimin",
           "image": "media/jimin.jpg"
         },
@@ -19,34 +15,38 @@
           "image": "media/jin.jpg"
         },
         {
+          "label": "V",
+          "image": "media/v.jpg"
+        },
+        {
           "label": "J-Hope",
           "image": "media/jhope.jpg"
         }
       ],
-      "correct": 0
+      "correct": 2
     },
     {
       "type": "multiple",
       "text": "Var föddes Louisa?",
       "options": [
         {
-          "label": "Bern",
-          "icon": "media/city-bern.svg"
-        },
-        {
-          "label": "Berlin",
-          "icon": "media/city-berlin.svg"
+          "label": "Oslo",
+          "icon": "media/city-oslo.svg"
         },
         {
           "label": "Borås",
           "icon": "media/city-boras.svg"
         },
         {
-          "label": "Oslo",
-          "icon": "media/city-oslo.svg"
+          "label": "Berlin",
+          "icon": "media/city-berlin.svg"
+        },
+        {
+          "label": "Bern",
+          "icon": "media/city-bern.svg"
         }
       ],
-      "correct": 0
+      "correct": 3
     },
     {
       "type": "multiple",
