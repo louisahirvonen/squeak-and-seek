@@ -49,7 +49,14 @@ const server = http.createServer((req, res) => {
   const total = await host.evaluate(() => window.__host.questions.length);
   for (let qi = 0; qi < total; qi++) {
     await host.click('#btnGo, #btnNext');
-    await sleep(1200); await shot(host, `02-intro-q${qi}`);
+    await sleep(1200);
+    if (await host.evaluate(() => window.__host.phase) === 'wager') {
+      // Bet your cheese: most rats bet something, two stay out.
+      for (let i = 0; i < NAMES.length - 2; i++) await players[i].click(`.p-bet[data-pct="${[100, 50, 25, 0][i % 4]}"]`).catch(() => {});
+      await sleep(300); await shot(host, '05b-bet'); await shot(players[0], 'p-05b-bet');
+      await host.click('#btnNext'); await sleep(1200);
+    }
+    await shot(host, `02-intro-q${qi}`);
     await host.waitForSelector('#timer', { timeout: 30000 }); await sleep(400);
     const Q = await host.evaluate(() => { const q = window.__host.questions[window.__host.qi]; return { correct: q.correct, n: q.options.length, type: q.type, min: q.min, max: q.max }; });
     if (Q.type === 'number') await shot(players[0], `p-03-number-q${qi}`);
@@ -61,6 +68,8 @@ const server = http.createServer((req, res) => {
         const target = right ? Q.correct[0] : Math.max(Q.min, Math.min(Q.max, Q.correct[0] + ((i % 5) - 2 || 3)));
         for (let v = Q.min; v < target; v++) await players[i].click('#pPlus').catch(() => {});
         await players[i].click('#pLock').catch(() => {});
+      } else if (Q.type === 'vote') {
+        await players[i].click(right ? '.p-vote:has-text("Louisa"), .p-vote:has-text("Jo")' : '.p-vote >> nth=3').catch(() => {});
       } else {
         const choice = right ? Q.correct[0] : [...Array(Q.n).keys()].find((x) => !Q.correct.includes(x));
         await players[i].click(`.p-answer[data-i="${choice}"]`).catch(() => {});

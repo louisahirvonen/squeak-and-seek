@@ -102,6 +102,7 @@
       if (type === 'image' || type === 'images') type = 'photo';
       if (type === 'tf' || type === 'true/false') type = 'truefalse';
       if (type === 'slider' || type === 'numeric') type = 'number';
+      if (type === 'poll' || type === 'majority') type = 'vote';
       let options; let correct; let extra = {};
       if (type === 'number') {
         // Players step a counter up and down on their phone; only the exact number counts.
@@ -111,6 +112,9 @@
         options = []; correct = [c]; extra = { min, max, unit: String(q.unit ?? ''), closest: q.scoring === 'closest' };
         if (max <= min) errors.push(`Question ${n}: "max" must be larger than "min".`);
         if (!Number.isInteger(c) || c < min || c > max) errors.push(`Question ${n}: "correct" must be a whole number from ${min} to ${max}.`);
+      } else if (type === 'vote' && q.options === 'players') {
+        // Majority vote among the guests themselves: the options are filled in with whoever is playing when it is asked.
+        options = []; correct = []; extra = { guests: true };
       } else if (type === 'truefalse') {
         options = [{ label: 'True' }, { label: 'False' }];
         const c = Array.isArray(q.correct) ? q.correct : [q.correct];
@@ -122,7 +126,8 @@
         if (type === 'photo' && options.some((o) => !o.image)) errors.push(`Question ${n}: every option of a photo question needs an "image".`);
         const c = Array.isArray(q.correct) ? q.correct : [q.correct];
         correct = c.map(Number).filter((v) => Number.isInteger(v) && v >= 0 && v < options.length);
-        if (!correct.length) errors.push(`Question ${n}: "correct" must be an option position from 0 to ${options.length - 1} (or a list of them).`);
+        if (type === 'vote') correct = []; // no right answer: the most popular one wins, decided when the question ends
+        else if (!correct.length) errors.push(`Question ${n}: "correct" must be an option position from 0 to ${options.length - 1} (or a list of them).`);
       }
       const media = q.media || (q.image ? { image: q.image } : q.video ? { video: q.video } : null);
       return { text, type, options, correct, media, timeLimit: Number(q.timeLimit) || def, ...extra };
@@ -134,6 +139,10 @@
 
   // Streak bonus: 2 right in a row = +100, 3 = +200, 4 or more = +300.
   const streakBonus = (streak) => Math.max(0, Math.min(streak - 1, 3)) * 100;
+  // Bet your cheese: the shares of your score you can bet, and what a share is worth. Everyone can stake at least
+  // 1,000, so the rats at the bottom have something to play for too.
+  const BETS = [0, 25, 50, 100];
+  const stake = (score, pct) => Math.round(Math.max(Number(score) || 0, 1000) * pct / 100);
   // Stable pick from a list (same seed, same line), so a re-render never changes the text.
   const pickLine = (list, seed) => list[hash(seed) % list.length];
 
@@ -220,8 +229,16 @@
     })(start);
   }
 
+  // Reactions a phone can send to the big screen (drawn, not emoji).
+  const REACTIONS = [
+    { name: 'Love', html: g('<path fill="currentColor" d="M24 42C10 31 5 24 5 16.5A9.5 9.5 0 0 1 24 12a9.5 9.5 0 0 1 19 4.5C43 24 38 31 24 42z"/>') },
+    { name: 'Cheese', html: GLYPHS.cheese },
+    { name: 'Ha ha', html: '<b>HA HA</b>' },
+    { name: 'No', html: '<b>NOOO</b>' },
+  ];
+
   const ordinal = (n) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
-  window.SQ = { cfg, params, isLocal, escapeHtml, uid, hash, C, GLYPHS, ANSWERS, TF, answerStyle, ratSVG, birthdayRat, playerRat, avatar, isBirthday, normalizeQuestions, pointsFor, streakBonus, pickLine, connect, keepAwake, confetti, ordinal, fmt };
+  window.SQ = { cfg, params, isLocal, escapeHtml, uid, hash, C, GLYPHS, ANSWERS, TF, answerStyle, ratSVG, birthdayRat, playerRat, avatar, isBirthday, normalizeQuestions, pointsFor, streakBonus, BETS, stake, REACTIONS, pickLine, connect, keepAwake, confetti, ordinal, fmt };
 })();

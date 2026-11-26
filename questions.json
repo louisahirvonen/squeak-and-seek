@@ -110,6 +110,11 @@
       "correct": 6
     },
     {
+      "type": "vote",
+      "text": "Vem har bäst outfit ikväll?",
+      "options": "players"
+    },
+    {
       "type": "truefalse",
       "text": "Melodifestivalen är årets högtid.",
       "correct": true,

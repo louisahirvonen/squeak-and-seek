@@ -84,6 +84,12 @@ const server = http.createServer((req, res) => {
   for (let qi = 0; qi < total; qi++) {
     await host.click('#btnGo, #btnNext');
     await sleep(900);
+    if (await host.evaluate(() => window.__host.phase) === 'wager') {
+      // Bet your cheese, before the final question: p0 goes all in, p1 bets nothing, p2 a quarter.
+      await shot(host, '06b-bet.png'); await shot(players[0], 'p-06b-bet.png');
+      await players[0].click('.p-bet[data-pct="100"]'); await players[1].click('.p-bet[data-pct="0"]'); await players[2].click('.p-bet[data-pct="25"]');
+      await host.waitForSelector('.intro', { timeout: 8000 }); await sleep(900);
+    }
     await shot(host, `03-intro-q${qi}.png`);
     await host.waitForSelector('#timer', { timeout: 20000 });
     await sleep(600);
@@ -127,7 +133,9 @@ const server = http.createServer((req, res) => {
   check(scores['Cheddar Chad'] > scores['Gouda Gal'] && scores['Gouda Gal'] > scores['Brie Brie'], 'ranking matches answers given');
   check(scores['Brie Brie'] > 0, 'multiple-correct question awards points for the second correct option');
   const chad = await host.evaluate(() => Object.values(window.__host.players).find((p) => p.name === 'Cheddar Chad'));
-  check(chad.best === total && chad.score > total * 1000, `streak bonus and double final are counted (best streak ${chad.best}, ${chad.score} pts)`);
+  check(chad.best === total && chad.score > total * 1000, `streak bonus and the final bet are counted (best streak ${chad.best}, ${chad.score} pts)`);
+  const won = await host.evaluate(() => { const S = window.__host; const id = Object.keys(S.players).find((k) => S.players[k].name === 'Cheddar Chad'); return S.wagers[id]; });
+  check(won > 0, `going all in and getting the final question right pays out (+${won})`);
 
   await players[1].reload(); await sleep(1500);
   const rejoin = (await players[1].textContent('#screen')).replace(/\s+/g, ' ');

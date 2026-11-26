@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node e2e.js",
     "crowd": "node crowd.js",
-    "round2": "node round2.js"
+    "round2": "node round2.js",
+    "modes": "node modes.js"
   },
   "devDependencies": {
     "playwright": "^1.50.0"

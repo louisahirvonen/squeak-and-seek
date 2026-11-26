@@ -46,6 +46,9 @@ Edit `questions.json`, commit and push. The site updates within a minute or two 
 ```
 
 - A number question lets players step a counter up and down on their phone and lock it in; only the exact number counts: `{ "type": "number", "text": "Hur länge …?", "min": 0, "max": 15, "unit": "år", "correct": 6 }`. Add `"scoring": "closest"` to score by closeness instead: the closest guess in the room gets 1000 points and each step further down the ranking gets evenly less (speed doesn't matter).
+- A vote has no right answer: the most popular answer wins, and everyone who picked it gets 1000 points (a tie lets both win; being outvoted costs nothing and doesn't break a streak). Let guests vote for each other with `{ "type": "vote", "text": "Vem har bäst outfit ikväll?", "options": "players" }` (nobody can vote for themselves), or between your own answers with `"options": ["Ost", "Skinka", "Kaviar"]`.
+- Before the last question everyone bets part of their score on getting it right ("Bet your cheese": nothing, a quarter, half or all in; win the bet if right, lose it if wrong, and everyone can stake at least 1,000). Set `wagerFinal: false` in `js/config.js` to get a double-points final instead.
+- On the result screen, the leaderboard and the final screen, phones have four reaction buttons; each tap floats up the big screen next to that guest's rat.
 - `correct` counts from 0 (`0` = first option). Use a list like `[0, 2]` when several answers count as right. True/false uses `true` or `false`.
 - An option can carry a small picture next to its text: `{ "label": "Berlin", "icon": "media/city-berlin.svg" }` (big screen only; phones show the coloured buttons).
 - `media` adds one picture (`"image"`) or one video (`"video"`, MP4) above the question. A video plays first and the timer starts when it ends.

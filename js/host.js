@@ -11,6 +11,7 @@
   const INTRO_MS = 4000;
   const LATE_GRACE_S = 1.2;
   const NAME = SQ.cfg.birthdayName || 'Louisa';
+  const WAGER_S = 20; // how long the betting round before the final question stays open
   const REVEAL_MS = 900; // suspense before the right answer lights up (phones wait the same time)
   const ARROW = (dir) => `<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="${dir === 'up' ? 'M6 1l5 9H1z' : 'M6 11L1 2h10z'}"/></svg>`;
 
@@ -21,14 +22,18 @@
     phase: 'title', code: null, title: 'Squeak & Seek', questions: [], errors: [], loadError: null,
     players: {}, qi: -1, done: 0, answers: {}, counts: [], qStart: 0, limit: 20, endsAt: 0, seq: 0,
     prevScores: {}, prevRanks: {}, moves: false, fastest: null, lastTick: null,
-    game: 1, qKey: '', podStart: 0, podTimes: null, squeaks: 0, kicked: [], qWall: 0,
+    game: 1, qKey: '', podStart: 0, podTimes: null, squeaks: 0, kicked: [], qWall: 0, bets: {}, wagers: {}, betKey: '', betEnds: 0,
   };
   let link = null; let heartbeat = null; let timerRaf = null; let introTimer = null; let ending = false;
-  let timers = []; let lastNext = 0; let offlineTimer = null; let offline = false; const lobbySeen = new Set(); const lastSqueak = {};
+  let timers = []; let lastNext = 0; let offlineTimer = null; let offline = false; const lastReact = {}; let lastReactSound = 0; const lobbySeen = new Set(); const lastSqueak = {};
   // Timers that belong to the current phase: all cleared when the phase changes.
   const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.push(t); return t; };
   const avatar = (id, cls = '') => SQ.avatar(id, cls, !!S.players[id]?.bday);
-  const isDouble = (qi = S.qi) => SQ.cfg.doubleFinal !== false && total() >= 3 && qi === total() - 1;
+  // "Bet your cheese": before the final question everyone bets part of their score on getting it right.
+  // When it is on, it takes the place of the double-points final.
+  const wagerOn = () => SQ.cfg.wagerFinal === true && total() >= 3;
+  const isBetQ = (qi = S.qi) => wagerOn() && qi === total() - 1;
+  const isDouble = (qi = S.qi) => SQ.cfg.doubleFinal !== false && !wagerOn() && total() >= 3 && qi === total() - 1;
 
   // ---------- persistence ----------
   const persist = () => localStorage.setItem(STORE, JSON.stringify({ code: S.code, players: S.players, done: S.done, game: S.game, kicked: S.kicked, savedAt: Date.now() }));
@@ -53,7 +58,7 @@
   // ---------- networking ----------
   function connect() {
     if (link) link.close();
-    link = SQ.connect({ code: S.code, role: 'host', events: ['join', 'answer', 'squeak', 'leave'], onMessage, onStatus: (s) => {
+    link = SQ.connect({ code: S.code, role: 'host', events: ['join', 'answer', 'squeak', 'leave', 'bet', 'react'], onMessage, onStatus: (s) => {
       $('#barCode')?.classList.toggle('offline', s !== 'SUBSCRIBED');
       clearTimeout(offlineTimer);
       if (s === 'SUBSCRIBED') { if (offline) { offline = false; toast('Back online'); } broadcastAll(); }
@@ -69,12 +74,15 @@
     const cq = q();
     const p = { phase: S.phase, code: S.code, title: S.title, q: S.qi, total: total(), seq: ++S.seq, players: playerCount(), g: S.game };
     if (S.phase === 'leaderboard' && isDouble(S.qi + 1)) p.fin = true; // the next question is the final, double one
+    if (S.phase === 'leaderboard' && isBetQ(S.qi + 1)) p.wgn = 1; // the betting round comes next
+    if (S.phase === 'wager') { p.k = S.betKey; p.limit = WAGER_S; p.endsIn = Math.max(0, S.betEnds - performance.now()); p.a = Object.keys(S.bets).map(SQ.hash); }
     if (S.phase === 'podium' && S.podTimes) { p.rv = S.podTimes; p.el = Math.round(performance.now() - S.podStart); }
     if (cq && ['intro', 'question', 'reveal'].includes(S.phase)) {
       p.type = cq.type; p.n = cq.options.length; p.video = !!cq.media?.video;
-      p.k = S.qKey; p.limit = cq.timeLimit; if (isDouble()) p.dbl = true;
+      p.k = S.qKey; p.limit = cq.timeLimit; if (isDouble()) p.dbl = true; if (isBetQ()) p.wg = 1;
       if (S.phase === 'reveal') p.wait = REVEAL_MS;
       if (cq.type === 'photo') p.opts = cq.options.map((o) => ({ label: o.label, image: o.image }));
+      if (cq.guests) p.opts = cq.options.map((o) => ({ label: o.label, pid: o.pid, bd: o.bd ? 1 : 0 })); // vote for a guest
       if (cq.type === 'number') { p.min = cq.min; p.max = cq.max; p.unit = cq.unit; if (cq.closest) p.cl = true; }
       if (S.phase === 'question') {
         p.endsIn = Math.max(0, S.endsAt - performance.now());
@@ -100,6 +108,7 @@
       }
       if (S.phase === 'reveal' && q()) {
         o.c = a ? a.correct : null; o.p = a ? a.points : 0;
+        if (S.wagers[p.id]) o.wg = S.wagers[p.id]; // what the bet won (+) or cost (−)
         if (!a && S.qWall && p.joinedAt > S.qWall) o.nw = 1; // walked in during this question
         if (a) { o.b = a.bonus || 0; o.t = Math.round(a.t * 10) / 10; if (S.fastest === p.id) o.f = 1; if (a.off !== undefined) o.off = a.off; }
       }
@@ -114,13 +123,15 @@
     if (event === 'answer') return onAnswer(msg);
     if (event === 'squeak') return onSqueak(msg);
     if (event === 'leave') return onLeave(msg);
+    if (event === 'bet') return onBet(msg);
+    if (event === 'react') return onReact(msg);
   }
 
   // A guest tapped "Leave" on their phone: out of the lobby, or no longer waited for once the quiz is running.
   function onLeave({ id }) {
     const p = S.players[id]; if (!p) return;
     if (S.phase === 'lobby') { delete S.players[id]; lobbySeen.delete(id); persist(); renderLobbyPlayers(); broadcastAll(); return; }
-    p.gone = true; persist(); updateAnswered(); checkAllIn();
+    p.gone = true; persist(); updateAnswered(); checkAllIn(); checkBetsIn();
   }
 
   // A guest tapped their rat in the lobby: it squeaks and wiggles on the big screen.
@@ -159,6 +170,7 @@
     const cq = q();
     if (!Number.isInteger(choice)) return;
     if (cq.type === 'number' ? (choice < cq.min || choice > cq.max) : (choice < 0 || choice >= cq.options.length)) return;
+    if (cq.guests && cq.options[choice].pid === id) return; // no voting for yourself
     const t = (performance.now() - S.qStart) / 1000;
     if (t > S.limit + LATE_GRACE_S) return;
     const correct = cq.correct.includes(choice);
@@ -171,6 +183,68 @@
   }
   // Everyone we are waiting for has answered: no need to run the clock down.
   function checkAllIn() { if (S.phase === 'question' && answeredCount() > 0 && !waitingFor().length) later(endQuestion, 400); }
+
+  // ---------- reactions ----------
+  // A guest tapped a reaction on their phone: it floats up the big screen with their rat next to it.
+  function onReact({ id, r }) {
+    const p = S.players[id]; const R = SQ.REACTIONS[r];
+    if (!p || !R || !['reveal', 'leaderboard', 'podium'].includes(S.phase)) return;
+    const now = performance.now(); if (now - (lastReact[id] || 0) < 600) return; lastReact[id] = now;
+    let layer = $('#reacts'); if (!layer) { layer = document.createElement('div'); layer.id = 'reacts'; layer.className = 'reacts'; document.body.appendChild(layer); }
+    if (layer.childElementCount > 40) return;
+    const el = document.createElement('div'); el.className = `react r${r}`;
+    el.style.left = `${4 + Math.random() * 88}%`; el.style.setProperty('--tilt', `${(Math.random() * 16 - 8).toFixed(1)}deg`);
+    el.innerHTML = `${avatar(id)}<span class="react-what">${R.html}</span>`;
+    layer.appendChild(el);
+    el.addEventListener('animationend', () => el.remove()); setTimeout(() => el.remove(), 4000);
+    if (now - lastReactSound > 350) { lastReactSound = now; A.sfx.pop(); }
+  }
+
+  // ---------- bet your cheese ----------
+  function startWager() {
+    S.bets = {}; S.wagers = {}; S.betKey = `${S.game}.w.${Date.now().toString(36)}`;
+    S.betEnds = performance.now() + WAGER_S * 1000;
+    go('wager');
+    A.sfx.fanfare();
+    const tick = () => {
+      if (S.phase !== 'wager') return;
+      const left = Math.max(0, Math.ceil((S.betEnds - performance.now()) / 1000));
+      const el = $('#wSecs'); if (el) el.textContent = left;
+      if (left <= 0) return nextQuestion();
+      later(tick, 250);
+    };
+    later(tick, 250);
+  }
+  function onBet({ id, pct }) {
+    if (S.phase !== 'wager' || !S.players[id] || S.bets[id] !== undefined || !SQ.BETS.includes(pct)) return;
+    S.bets[id] = pct;
+    A.sfx.pop();
+    updateBets(); broadcastState(); checkBetsIn();
+  }
+  function updateBets() {
+    const n = Object.keys(S.bets).length;
+    const el = $('#wCount'); if (el) el.textContent = `${n} / ${playerCount()}`;
+    const faces = $('#wFaces');
+    if (faces) Object.keys(S.bets).forEach((id) => { if (!faces.querySelector(`[data-id="${CSS.escape(id)}"]`)) faces.insertAdjacentHTML('beforeend', `<span class="q-face pop-in" data-id="${esc(id)}">${avatar(id)}</span>`); });
+  }
+  function checkBetsIn() {
+    if (S.phase !== 'wager' || !Object.keys(S.bets).length) return;
+    if (!Object.entries(S.players).some(([id, p]) => S.bets[id] === undefined && !away(p))) later(nextQuestion, 900);
+  }
+  function renderWager() {
+    stage.innerHTML = `
+      <section class="wager">
+        ${deco('intro')}
+        <p class="kicker big">Before the final question</p>
+        <h2 class="display">Bet your<br>cheese</h2>
+        <p class="wager-rule">Choose on your phone how much of your score to bet.<br><b>Right answer: you win it. Wrong answer: you lose it.</b></p>
+        <div class="wager-foot">
+          <div class="wager-count"><span class="wager-num" id="wCount">0 / ${playerCount()}</span><small>bets placed</small><div class="q-faces" id="wFaces"></div></div>
+          <div class="wager-go"><span class="wager-secs"><b id="wSecs">${WAGER_S}</b> s</span><button class="btn dark big" id="btnNext">Final question &rarr;</button></div>
+        </div>
+      </section>`;
+    $('#btnNext').addEventListener('click', next);
+  }
 
   // Question screen: the counter, a face for everyone who has locked in, and who we are still waiting for.
   function updateAnswered() {
@@ -245,6 +319,8 @@
 
   function startQuestion() {
     const cq = q();
+    if (cq.type === 'vote') cq.correct = []; // decided by the room when the question ends
+    if (cq.guests) cq.options = Object.entries(S.players).sort((x, y) => x[1].joinedAt - y[1].joinedAt).map(([pid, p]) => ({ label: p.name, pid, bd: p.bday }));
     S.limit = cq.timeLimit; S.answers = {};
     S.qWall = Date.now(); S.qStart = performance.now(); S.endsAt = S.qStart + S.limit * 1000; S.lastTick = null;
     go('question');
@@ -290,19 +366,37 @@
         a.correct = g === 0; a.base = Math.round(1000 * (1 - g / dists.length));
       });
     }
+    // Majority vote: the most popular answer (or answers, on a tie) wins, and everyone who picked it scores 1000.
+    // Speed plays no part. Two rats have to agree before anything counts as a majority.
+    if (cq.type === 'vote') {
+      const tally = {}; Object.values(S.answers).forEach((a) => { tally[a.choice] = (tally[a.choice] || 0) + 1; });
+      const top = Math.max(0, ...Object.values(tally));
+      cq.correct = top >= 2 || answeredCount() === 1 ? Object.keys(tally).filter((k) => tally[k] === top).map(Number) : [];
+      Object.values(S.answers).forEach((a) => { a.correct = cq.correct.includes(a.choice); a.base = a.correct ? 1000 : 0; a.vote = 1; });
+    }
     Object.entries(S.players).forEach(([id, p]) => {
       const a = S.answers[id];
       p.idle = a ? 0 : (p.idle || 0) + 1;
       if (a) S.counts[a.choice] = (S.counts[a.choice] || 0) + 1;
       // Close but not closest: points, and the streak is neither broken nor extended.
       if (a && !a.correct && cq.closest && a.base > 0) { a.points = a.base * mult; p.score += a.points; p.reachedAt = a.at; return; }
+      if (a && a.vote && !a.correct) return; // outvoted: no points, but a streak is not broken by a matter of taste
       if (!a || !a.correct) { p.streak = 0; return; }
       p.streak = (p.streak || 0) + 1; p.best = Math.max(p.best || 0, p.streak); p.right = (p.right || 0) + 1;
-      if (!cq.closest) p.fast = Math.min(p.fast ?? 999, a.t); // speed plays no part in a closest-guess question
+      if (!cq.closest && !a.vote) p.fast = Math.min(p.fast ?? 999, a.t); // speed plays no part in a closest-guess question
       a.bonus = SQ.streakBonus(p.streak) * mult;
       a.points = a.base * mult + a.bonus;
       p.score += a.points; p.reachedAt = a.at;
-      if (!cq.closest && (!S.fastest || a.t < S.answers[S.fastest].t)) S.fastest = id;
+      if (!cq.closest && !a.vote && (!S.fastest || a.t < S.answers[S.fastest].t)) S.fastest = id;
+    });
+    // Bets on the final question: win the stake when right, lose it (never below zero) when wrong or silent.
+    S.wagers = {};
+    if (isBetQ()) Object.entries(S.players).forEach(([id, p]) => {
+      const pct = S.bets[id]; if (!pct) return;
+      const before = S.prevScores[id] ?? 0; const stake = SQ.stake(before, pct); const a = S.answers[id];
+      const delta = a && a.correct ? stake : -Math.min(stake, before);
+      if (!delta) return;
+      p.score += delta; S.wagers[id] = delta; if (delta > 0) p.reachedAt = a.at;
     });
     if (S.moves) ranked().forEach((p, i) => { const up = S.prevRanks[p.id] - i; const pl = S.players[p.id]; if (up > (pl.climb || 0)) pl.climb = up; });
     S.done = S.qi + 1; persist();
@@ -318,7 +412,8 @@
     const now = performance.now(); if (now < lastNext) return; lastNext = now + (auto === true ? 1600 : 450);
     if (S.phase === 'lobby' && playerCount() > 0) return nextQuestion();
     if (S.phase === 'reveal') { if (S.qi + 1 >= total()) return go('podium'); go('leaderboard'); A.sfx.whoosh(); A.playSlot('lobby'); return; }
-    if (S.phase === 'leaderboard') return nextQuestion();
+    if (S.phase === 'leaderboard') return isBetQ(S.qi + 1) ? startWager() : nextQuestion();
+    if (S.phase === 'wager') return nextQuestion();
   }
 
   // The answer screen and the leaderboard move on by themselves: a countdown on the button, and a Pause next to it.
@@ -355,8 +450,8 @@
     document.body.dataset.tone = S.qi >= 0 ? TONES[S.qi % TONES.length] : 'pink';
     wipe(oldBg);
     const prog = $('#barProgress');
-    if (prog) prog.textContent = S.qi >= 0 && !['lobby', 'podium'].includes(S.phase) ? `${pad(S.qi + 1)} / ${pad(total())}` : '';
-    ({ title: renderTitle, lobby: renderLobby, intro: renderIntro, question: renderQuestion, reveal: renderReveal, leaderboard: renderLeaderboard, podium: renderPodium })[S.phase]();
+    if (prog) prog.textContent = S.qi >= 0 && !['lobby', 'podium', 'wager'].includes(S.phase) ? `${pad(S.qi + 1)} / ${pad(total())}` : '';
+    ({ title: renderTitle, lobby: renderLobby, intro: renderIntro, question: renderQuestion, reveal: renderReveal, leaderboard: renderLeaderboard, wager: renderWager, podium: renderPodium })[S.phase]();
   }
 
   // Colour change between screens: the old colour shrinks away in a circle instead of cutting.
@@ -471,7 +566,7 @@
     stage.innerHTML = `
       <section class="intro ${cq.media ? 'has-media' : ''}">
         ${deco('intro')}
-        <p class="kicker big">${S.qi + 1 === total() && total() > 1 ? 'Final question' : qLabel()}${isDouble() ? ' <b class="intro-stamp">Double points</b>' : ''}</p>
+        <p class="kicker big">${S.qi + 1 === total() && total() > 1 ? 'Final question' : qLabel()}${isDouble() ? ' <b class="intro-stamp">Double points</b>' : isBetQ() ? ' <b class="intro-stamp">The bets are in</b>' : cq.type === 'vote' ? ' <b class="intro-stamp">Majority wins</b>' : ''}</p>
         <h2 class="q-display">${esc(cq.text)}</h2>
         ${mediaHTML(cq, 'large', true)}
         ${cq.media?.video ? '' : '<div class="intro-bar"><span></span></div>'}
@@ -494,6 +589,13 @@
         <div class="num-answer rv-late"><span class="num-big">${c}</span>${unit}</div>
         <div class="num-hist">${vals.map((v) => `<div class="num-col ${v === c ? 'correct' : cq.closest && S.counts[v] && Math.abs(v - c) === best ? 'closest' : 'wrong'}" style="--share:${((S.counts[v] || 0) / top).toFixed(3)}"><span class="num-count">${S.counts[v] || 0}</span><span class="num-bar"></span><span class="num-val">${v}</span></div>`).join('')}</div>
       </div>`;
+    }
+    if (cq.guests) {
+      // Vote for a guest: everyone's rat and name; on the reveal the votes, most first, with the winner lit up.
+      const top = Math.max(1, ...(reveal ? S.counts : [1]));
+      let list = cq.options.map((o, i) => ({ o, i, n: reveal ? S.counts[i] || 0 : 0 }));
+      if (reveal) { list = list.sort((x, y) => y.n - x.n); if (list.some((x) => x.n)) list = list.filter((x) => x.n); } // only the rats somebody voted for
+      return `<div class="vote-grid ${list.length > 15 ? 'many' : ''} ${reveal ? 'tally' : ''}">${list.map(({ o, i, n }) => `<div class="vote-opt ${reveal ? (cq.correct.includes(i) ? 'correct' : n ? 'some' : 'wrong') : ''}" style="--share:${(n / top).toFixed(3)}">${SQ.avatar(o.pid, '', !!o.bd)}<span class="label">${esc(o.label)}</span>${reveal ? `<span class="count">${n}</span>` : ''}</div>`).join('')}</div>`;
     }
     const most = Math.max(1, ...(reveal ? S.counts : [1]));
     const share = (i) => (reveal ? (S.counts[i] / most).toFixed(3) : 0); // how full this answer's bar is on the reveal
@@ -529,7 +631,7 @@
     const middle = cq.type === 'photo' ? '' : (mediaHTML(cq, 'medium', false) || `<div class="mascot mid bob">${birthdayRat()}</div>`);
     stage.innerHTML = `
       <section class="question ${cq.type}">
-        ${qHead(cq, `${isDouble() ? '<span class="q-double">Double points</span>' : ''}<div class="timer" id="timer"><div class="ring" id="timerRing" style="--p:1"></div><span id="timeLeft">${cq.timeLimit}</span></div>`)}
+        ${qHead(cq, `${isDouble() ? '<span class="q-double">Double points</span>' : isBetQ() ? '<span class="q-double">Bets are in</span>' : cq.type === 'vote' ? '<span class="q-double">Majority wins</span>' : ''}<div class="timer" id="timer"><div class="ring" id="timerRing" style="--p:1"></div><span id="timeLeft">${cq.timeLimit}</span></div>`)}
         <div class="q-body">
           <div class="q-visual">${middle}</div>
           <div class="answered"><span id="answered">0 / ${playerCount()}</span><small>answered</small><div class="q-faces" id="qFaces"></div><p class="q-waiting" id="qWaiting"></p><button class="btn ghost small" id="btnSkip">End now</button></div>
@@ -545,15 +647,18 @@
     const mood = right >= Math.max(1, playerCount() / 2) ? 'happy' : 'sad';
     const middle = cq.type === 'photo' ? '' : (mediaHTML(cq, 'medium', false) || `<div class="mascot mid rv-late ${mood === 'happy' ? 'hop' : 'droop'}">${birthdayRat({ mood })}</div>`);
     const spotOn = Object.values(S.answers).some((a) => a.off === 0);
-    const label = !answeredCount() ? 'nobody answered' : cq.closest && !spotOn ? (right === 1 ? 'was closest' : 'were closest') : right === 0 ? 'not a single rat' : right === playerCount() && right > 1 ? 'full house' : 'got it right';
+    const label = !answeredCount() ? 'nobody answered' : cq.type === 'vote' ? (right ? 'voted with the room' : 'no two rats agreed') : cq.closest && !spotOn ? (right === 1 ? 'was closest' : 'were closest') : right === 0 ? 'not a single rat' : right === playerCount() && right > 1 ? 'full house' : 'got it right';
     const f = S.fastest && S.players[S.fastest];
     const fastest = f ? `<div class="rv-fast rv-late">${avatar(S.fastest)}<div><small>Fastest paw</small><strong>${esc(f.name)}</strong><span>${S.answers[S.fastest].t.toFixed(1)} s</span></div></div>` : '';
+    const won = Object.entries(S.wagers).sort((x, y) => y[1] - x[1])[0]; const lost = Object.entries(S.wagers).sort((x, y) => x[1] - y[1])[0];
+    const betLine = (label, e) => (e && S.players[e[0]] ? `<div class="rv-fast rv-bet rv-late">${avatar(e[0])}<div><small>${label}</small><strong>${esc(S.players[e[0]].name)}</strong><span>${e[1] > 0 ? '+' : '&minus;'}${fmt(Math.abs(e[1]))}</span></div></div>` : '');
+    const bets = (won && won[1] > 0 ? betLine('Biggest bet won', won) : '') + (lost && lost[1] < 0 ? betLine('Biggest bet lost', lost) : '');
     stage.innerHTML = `
       <section class="question reveal ${cq.type}">
         ${qHead(cq, `<div class="stat rv-late"><span class="stat-num">${right}<small>/${playerCount()}</small></span><span class="stat-label">${label}</span></div>`)}
         <div class="q-body">
           <div class="q-visual">${middle}</div>
-          <div class="rv-side">${fastest}<button class="btn primary big" id="btnNext">${S.qi + 1 >= total() ? 'Final results &rarr;' : 'Leaderboard &rarr;'}</button></div>
+          <div class="rv-side">${bets || fastest}<button class="btn primary big" id="btnNext">${S.qi + 1 >= total() ? 'Final results &rarr;' : 'Leaderboard &rarr;'}</button></div>
         </div>
         ${answersHTML(cq, true)}
       </section>`;
@@ -580,9 +685,10 @@
     const climber = list.map((p, i) => ({ p, d: move(p, i) })).filter((x) => x.d >= 2).sort((a, b) => b.d - a.d)[0];
     const hot = list.filter((p) => (p.streak || 0) >= 3).sort((a, b) => b.streak - a.streak)[0];
     const callout = (label, p, text) => `<div class="lb-callout">${avatar(p.id)}<div><small>${label}</small><strong>${esc(p.name)}</strong><span>${text}</span></div></div>`;
-    const finalNext = isDouble(S.qi + 1);
+    const finalNext = isDouble(S.qi + 1); const betNext = isBetQ(S.qi + 1);
     let note = '';
-    if (finalNext) note = 'Last question next. <b>Double points.</b> Still anyone\'s game.';
+    if (betNext) note = 'One question left. <b>First: bet your cheese.</b>';
+    else if (finalNext) note = 'Last question next. <b>Double points.</b> Still anyone\'s game.';
     else if (list[1] && list[0].score > 0) { const gap = list[0].score - list[1].score; note = gap === 0 ? `<b>${esc(list[0].name)}</b> and <b>${esc(list[1].name)}</b> are tied at the top.` : `<b>${esc(list[1].name)}</b> is ${fmt(gap)} points off the lead.`; }
     stage.innerHTML = `
       <section class="leaderboard">
@@ -604,7 +710,7 @@
         }).join('')}</ol>
         <div class="lb-foot">
           <p class="lb-note">${note}${list.length > 5 ? ` <span>${list.length - 5} more rat${list.length - 5 === 1 ? '' : 's'} below. Your place is on your phone.</span>` : ''}</p>
-          <button class="btn dark big" id="btnNext">${finalNext ? 'Final question' : 'Next question'} &rarr;</button>
+          <button class="btn dark big" id="btnNext">${betNext ? 'Place your bets' : finalNext ? 'Final question' : 'Next question'} &rarr;</button>
         </div>
       </section>`;
     // Rows start where they stood before this question, then slide to their new place while the scores count up.
