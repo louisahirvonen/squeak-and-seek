@@ -10,7 +10,11 @@
         "Felt",
         "Tin"
       ],
-      "correct": 0
+      "correct": 0,
+      "after": {
+        "video": "tests/fixtures/clip.webm",
+        "seconds": 2
+      }
     },
     {
       "type": "vote",

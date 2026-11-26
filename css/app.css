@@ -816,3 +816,10 @@ body.player[data-result="dare"] { --bg: var(--ink); --fg: var(--paper); --soft: 
 .p-dare-in .p-warn { color: var(--coral); letter-spacing: .3em; animation: diBlink .32s steps(2, jump-none) 9; }
 .p-dare-in .p-title { font-style: italic; text-transform: uppercase; color: var(--lime); text-shadow: 4px 4px 0 var(--pink); font-size: 4rem; transform: skewX(-8deg); transform-origin: left; }
 .p-slam { animation: diSlamL .32s .25s cubic-bezier(.2,1.4,.3,1) both; }
+
+/* ---------- a clip after the answer ---------- */
+.stage > .after-video { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: rgba(11,11,15,.94); animation: fadeIn .35s ease-out both; }
+.after-video.out { opacity: 0; transition: opacity .3s; }
+.after-video video { max-width: 92%; max-height: calc(100vh - 64px - 8vh); border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.6); background: #000; animation: popIn .45s both; }
+.after-video .btn { position: absolute; right: 3vw; bottom: 3vh; color: var(--paper); }
+@keyframes fadeIn { from { opacity: 0; } }

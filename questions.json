@@ -84,7 +84,7 @@
         "Automatiserar testning av mobilappar"
       ],
       "correct": 2,
-      "image": "media/tall-hat.jpg"
+      "image": "media/blazer.jpg"
     },
     {
       "type": "photo",
@@ -248,6 +248,20 @@
         "Adventister: livsstilen som får dig att bli 100"
       ],
       "correct": 1
+    },
+    {
+      "text": "Vad lärde sig Louisa alldeles för sent i livet?",
+      "options": [
+        "Att cykla",
+        "Att svälja piller",
+        "Att knyta skorna",
+        "Att läsa av en analog klocka"
+      ],
+      "correct": 1,
+      "after": {
+        "video": "media/pills.mp4",
+        "seconds": 30
+      }
     },
     {
       "type": "number",

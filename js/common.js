@@ -139,6 +139,8 @@
         else if (!correct.length) errors.push(`Question ${n}: "correct" must be an option position from 0 to ${options.length - 1} (or a list of them).`);
       }
       const media = q.media || (q.image ? { image: q.image } : q.video ? { video: q.video } : null);
+      // A clip that plays once the answer is out: { "after": { "video": "media/x.mp4", "seconds": 30 } }
+      if (q.after && q.after.video) extra.after = { video: String(q.after.video), seconds: Number(q.after.seconds) > 0 ? Number(q.after.seconds) : 0 };
       return { text, type, options, correct, media, timeLimit: extra.voteLimit || Number(q.timeLimit) || def, ...extra };
     });
     return { title: data.title || 'Squeak & Seek', questions, errors };

@@ -58,6 +58,15 @@ const server = http.createServer((req, res) => {
     await P[13].click('.p-answer[data-i="1"]'); await P[14].click('.p-answer[data-i="1"]');
     await toReveal();
 
+    // A clip plays once the answer is out, and the countdown to the leaderboard waits for it.
+    await H(() => { SQ.cfg.autoAdvanceSeconds = 20; });
+    await host.waitForSelector('#afterVideo video', { timeout: 6000 });
+    check(await host.locator('#autoCount').count() === 0, 'the countdown waits while the clip plays');
+    await shot(host, '00-after-video');
+    await host.waitForSelector('#afterVideo', { state: 'detached', timeout: 12000 });
+    check(await host.locator('#autoCount').count() === 1 && await H(() => window.__host.phase) === 'reveal', 'after the clip (cut at its time limit) the countdown starts');
+    await host.click('#btnHold'); await H(() => { SQ.cfg.autoAdvanceSeconds = 0; });
+
     // Reactions float up the big screen.
     check(await P[1].locator('#react').isVisible(), 'phones show the reaction buttons on the result screen');
     for (let i = 0; i < 8; i++) await P[i].click(`#react button[data-r="${i % 4}"]`);

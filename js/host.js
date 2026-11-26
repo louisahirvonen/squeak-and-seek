@@ -469,6 +469,7 @@
     clearTimeout(introTimer); cancelAnimationFrame(timerRaf);
     timers.forEach(clearTimeout); timers = [];
     delete document.body.dataset.urgent; A.hurry(false);
+    stage.querySelectorAll('video').forEach((v) => v.pause()); // a clip must not play on after its screen is gone
     render();
     broadcastAll();
   }
@@ -480,6 +481,7 @@
     // ("Play again") or a question re-asked after a host refresh is never mistaken for one already answered.
     S.qKey = `${S.game}.${S.qi}.${Date.now().toString(36)}`;
     const cq = q();
+    if (cq.after) clipFor(cq);
     go('intro');
     if (cq.media?.video) {
       A.pauseMusic();
@@ -895,7 +897,34 @@
         ${answersHTML(cq, true)}
       </section>`;
     $('#btnNext').addEventListener('click', next);
-    autoNext();
+    if (cq.after) later(() => playAfter(cq, autoNext), REVEAL_MS + 2800); else autoNext();
+  }
+
+  // The clip is fetched while the question is still being asked, so it starts at once when its moment comes.
+  const clips = {};
+  function clipFor(cq) {
+    const src = cq.after.video;
+    if (!clips[src]) { const v = document.createElement('video'); v.playsInline = true; v.preload = 'auto'; v.src = src; v.load(); clips[src] = v; }
+    return clips[src];
+  }
+
+  // A clip after the answer: it takes over the screen once the right answer has had its moment, plays (for at most
+  // "seconds"), and only then does the screen start counting down to the leaderboard.
+  function playAfter(cq, done) {
+    if (S.phase !== 'reveal' || q() !== cq) return;
+    A.stopMusic();
+    const box = document.createElement('div'); box.className = 'after-video'; box.id = 'afterVideo';
+    box.innerHTML = '<button class="btn ghost small" id="btnSkipAfter">Skip video</button>';
+    const v = clipFor(cq); v.currentTime = 0; box.prepend(v);
+    stage.appendChild(box);
+    v.muted = A.muted; let over = false;
+    const end = () => { if (over) return; over = true; v.pause(); box.classList.add('out'); setTimeout(() => box.remove(), 350); if (S.phase === 'reveal' && q() === cq) done(); };
+    v.addEventListener('ended', end);
+    v.addEventListener('error', () => later(end, 800));
+    if (cq.after.seconds) v.addEventListener('timeupdate', () => { if (v.currentTime >= cq.after.seconds) end(); });
+    later(end, ((cq.after.seconds || 120) + 6) * 1000); // whatever happens, the quiz goes on
+    box.querySelector('#btnSkipAfter').addEventListener('click', end);
+    v.play().catch(() => { v.muted = true; v.play().catch(() => later(end, 800)); });
   }
 
   // Count a number up (or down) in an element.
