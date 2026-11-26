@@ -199,6 +199,29 @@
       "correct": 2
     },
     {
+      "type": "photo",
+      "text": "Vilket är Louisas favoritspel?",
+      "options": [
+        {
+          "label": "Hades",
+          "image": "media/game-hades.jpg"
+        },
+        {
+          "label": "Skyrim",
+          "image": "media/game-skyrim.jpg"
+        },
+        {
+          "label": "The Sims 4",
+          "image": "media/game-sims.jpg"
+        },
+        {
+          "label": "Pokémon Mystery Dungeon",
+          "image": "media/game-pmd.jpg"
+        }
+      ],
+      "correct": 3
+    },
+    {
       "type": "write",
       "text": "Vilken blir Louisas nästa hobby?"
     },
