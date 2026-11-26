@@ -147,7 +147,7 @@
       "type": "vote",
       "text": "Vem har bäst outfit ikväll?",
       "options": "players",
-      "image": "media/night.jpg"
+      "image": "media/outfit.jpg"
     },
     {
       "type": "dare",
@@ -186,7 +186,7 @@
       "unit": "minuter",
       "scoring": "closest",
       "correct": 26,
-      "image": "media/selfie.jpg"
+      "image": "media/hairdo.jpg"
     },
     {
       "type": "dare",
