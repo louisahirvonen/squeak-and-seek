@@ -6,15 +6,16 @@
   <meta name="theme-color" content="#0B0B0F">
   <title>Squeak &amp; Seek</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23D2F65A'/><circle cx='28' cy='40' r='15' fill='white'/><circle cx='72' cy='40' r='15' fill='white'/><ellipse cx='50' cy='62' rx='27' ry='24' fill='white'/><circle cx='40' cy='60' r='5' fill='%231E3FD9'/><circle cx='60' cy='60' r='5' fill='%231E3FD9'/></svg>">
-  <link rel="stylesheet" href="css/app.css">
+  <!-- Our own code is fetched fresh (the address changes every minute), so a browser never runs an old saved
+       copy of the game against new questions. -->
+  <script>window.SQV = Math.floor(Date.now() / 60000); document.write('<link rel="stylesheet" href="css/app.css?v=' + SQV + '">');</script>
+  <noscript><link rel="stylesheet" href="css/app.css"></noscript>
 </head>
 <body class="player">
   <div class="conn" id="conn" hidden>Reconnecting…</div>
   <main id="screen" class="screen"></main>
 
   <script src="vendor/supabase.js"></script>
-  <script src="js/config.js"></script>
-  <script src="js/common.js"></script>
-  <script src="js/player.js"></script>
+  <script>['js/config.js', 'js/common.js', 'js/player.js'].forEach(function (f) { document.write('<script src="' + f + '?v=' + SQV + '"><\/script>'); });</script>
 </body>
 </html>

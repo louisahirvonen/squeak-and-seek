@@ -90,6 +90,7 @@ Anything timed inside a phase goes through `later()` in `host.js`, which is clea
 - **Never play the game's audio from an automated run.** Louisa could not find or stop music that a hidden page was playing. Tests launch Chromium headless with `--mute-audio`; do the same in any new script, and do not open the game in a visible browser or preview pane to check something.
 - After a refresh the title screen's main button is "Resume room"; "Start a new party" asks first, because it throws the running game away. A saved room is offered for 12 hours, so a test in the afternoon leaves a Resume button for the evening: start a new party then.
 - Short projector screens (720p, 768p) have their own rules under `@media (max-height: 800px)`; check them with the `W`/`H` crowd run.
+- GitHub Pages lets browsers keep JS and CSS for 10 minutes, while `questions.json` is always fetched fresh. An old `common.js` with new questions once showed "(q.options || []).map is not a function" on the title screen. `host.html` and `index.html` therefore load the game's own JS and CSS with a `?v=` that changes every minute (`window.SQV`); keep new script or style tags inside that loader.
 - Don't add emoji to the UI; the design uses the SVG glyphs in `common.js` and the bundled fonts (Bricolage Grotesque + DM Sans).
 
 ## Working with Louisa
