@@ -274,6 +274,17 @@
       }
     },
     {
+      "text": "Vad hände med Louisas händer?",
+      "image": "media/hands.jpg",
+      "options": [
+        "Hårfärgning utan handskar",
+        "En allergisk reaktion mot diskmedel",
+        "En cykeltur utan solkräm",
+        "Tre timmars rödbetsplockning"
+      ],
+      "correct": 2
+    },
+    {
       "type": "vote",
       "text": "Vem kommer lägga sig tidigast inatt?",
       "options": "players"
