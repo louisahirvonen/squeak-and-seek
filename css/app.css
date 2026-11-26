@@ -240,7 +240,7 @@ body[data-phase="title"] .stage { inset: 0; padding: 0; }
 .count { margin-left: auto; font-family: var(--display); font-weight: 800; font-size: clamp(1.8rem, 3vw, 3rem); line-height: 1; }
 .answer-grid.truefalse .count { position: absolute; right: 1.6vw; bottom: 1.6vh; }
 .tick { position: absolute; top: -14px; right: -12px; width: 54px; height: 54px; padding: 13px; border-radius: 50%; background: var(--ink); color: var(--lime); box-shadow: 0 0 0 4px var(--paper); animation: popIn .4s .2s both; }
-.reveal .answer.wrong, .reveal .photo-opt.wrong { opacity: .18; filter: saturate(0); transform: scale(.97); }
+.reveal .answer.wrong, .reveal .photo-opt.wrong { opacity: .3; filter: saturate(0); transform: scale(.97); }
 .reveal .answer.correct, .reveal .photo-opt.correct { box-shadow: 0 0 0 4px var(--paper); animation: pulse 1.4s ease-in-out 2; }
 
 .photo-grid { flex: 1.6; min-height: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2vw; }
@@ -394,7 +394,7 @@ body.host[data-urgent]::before { content: ''; position: fixed; inset: 0; z-index
 body.host[data-urgent] .answer, body.host[data-urgent] .photo-opt { animation: pulse 1s ease-in-out infinite; }
 
 /* ---------- reveal: counts first, then the truth ---------- */
-@keyframes dim { to { opacity: .18; filter: saturate(0); transform: scale(.97); } }
+@keyframes dim { to { opacity: .3; filter: saturate(0); transform: scale(.97); } }
 @keyframes glow { 0% { box-shadow: 0 0 0 0 var(--paper); } 40% { box-shadow: 0 0 0 10px var(--paper); transform: scale(1.03); } 100% { box-shadow: 0 0 0 4px var(--paper); transform: scale(1); } }
 @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(var(--share)); } }
 .reveal .q-head { animation: none; }
@@ -491,7 +491,7 @@ body.player[data-urgent] .p-secs { color: var(--coral); animation: pulse .5s inf
 @media (max-height: 800px) { .pod-rest { display: none; } }
 /* Reduced motion: no animation, but the reveal must still end in its final state. */
 @media (prefers-reduced-motion: reduce) {
-  .reveal .answer.wrong, .reveal .photo-opt.wrong { opacity: .18; filter: saturate(0); }
+  .reveal .answer.wrong, .reveal .photo-opt.wrong { opacity: .3; filter: saturate(0); }
   .reveal .answer.correct, .reveal .photo-opt.correct { box-shadow: 0 0 0 4px var(--paper); }
   .reveal .answer::after, .reveal .photo-opt::after { transform: scaleX(var(--share)); }
   .egg-run { display: none; }
@@ -547,7 +547,7 @@ body.player[data-urgent] .p-secs { color: var(--coral); animation: pulse .5s inf
 .p-picked-num span { font-family: var(--display); font-variation-settings: 'wdth' 80; font-weight: 800; font-size: 4.2rem; letter-spacing: -.05em; line-height: 1; }
 @media (prefers-reduced-motion: reduce) {
   .num-col.correct .num-bar { background: var(--lime); }
-  .num-col.wrong { opacity: .18; }
+  .num-col.wrong { opacity: .3; }
 }
 
 /* closest-guess scoring */
@@ -557,3 +557,64 @@ body.player[data-urgent] .p-secs { color: var(--coral); animation: pulse .5s inf
 @keyframes toPink { to { background: var(--pink); } }
 body.player[data-result="near"] { --bg: var(--sky); --fg: var(--ink); --soft: rgba(11,11,15,.12); }
 @media (prefers-reduced-motion: reduce) { .num-col.closest .num-bar { background: var(--pink); } }
+
+/* ---------- bug-fix round 2 ---------- */
+/* number reveal: however many different guesses there are, the chart stays inside its panel */
+.num-panel { min-width: 0; }
+.num-hist { min-width: 0; gap: min(1vw, 12px); }
+.num-col { flex: 0 1 min(6vw, 90px); width: auto; min-width: 0; }
+/* ...and the right number keeps quiet until the reveal */
+.num-col.correct .num-val, .num-col.closest .num-val { color: inherit; opacity: .8; }
+.num-col.correct .num-val { animation: toLimeText .3s .9s forwards; }
+.num-col.closest .num-val { animation: toPinkText .3s .9s forwards; }
+@keyframes toLimeText { to { color: var(--lime); opacity: 1; } }
+@keyframes toPinkText { to { color: var(--pink); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .num-col.correct .num-val { animation: none; color: var(--lime); opacity: 1; }
+  .num-col.closest .num-val { animation: none; color: var(--pink); opacity: 1; }
+}
+/* leaderboard on a narrow screen: the rows reach the right edge, so nothing may sit on top of the scores */
+@media (max-width: 1500px) { .deco-lb .s1, .deco-lb .s3 { display: none; } }
+/* short screens (720p and 768p projectors) */
+@media (max-height: 800px) {
+  .leaderboard { gap: 1.6vh; }
+  .ranks li { padding: .8vh 0; }
+  .ranks .avatar { width: 7vh; }
+  .rank { font-size: clamp(2rem, 4vw, 3.4rem); }
+  .tick { width: 38px; height: 38px; padding: 9px; top: -12px; right: -10px; }
+  .pod-rest { display: flex; gap: 4px 6px; }
+  .pod-rest li { font-size: .8rem; padding: 2px 10px; }
+}
+/* phones: no text selection, no long-press menu on a photo, no pull-to-refresh, no double-tap zoom */
+body.player { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; touch-action: manipulation; }
+body.player input { -webkit-user-select: text; user-select: text; }
+.p-answer img { pointer-events: none; -webkit-user-drag: none; }
+.p-sent { margin: 8px 0 0; font-weight: 700; font-size: .95rem; opacity: .8; }
+/* a phone held sideways: all the answers in one row, so none falls below the screen */
+@media (orientation: landscape) and (max-height: 500px) {
+  .p-answers, .p-answers.n2 { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .p-answers.n3 > :last-child { grid-column: auto; }
+  .p-answer img { max-height: 44vh; }
+  .p-answer { padding: 8px; gap: 4px; }
+}
+/* small phones (and any phone with the keyboard up): the Join button stays on the screen */
+@media (max-height: 620px) {
+  .p-join { justify-content: flex-start; padding: 12px 22px 14px; gap: 8px; }
+  .p-hero { width: 84px; height: 84px; margin-bottom: 0; }
+  .p-mascot { width: 78px; }
+  .p-age { transform: scale(.7); transform-origin: top right; right: -30px; }
+  .display.sm { font-size: 3rem; }
+  .p-join form { gap: 10px; margin-top: 4px; }
+  .p-join input { padding: 10px 14px; }
+}
+/* short screens: room on the podium for everyone from fourth place down */
+@media (max-height: 800px) {
+  .podium { gap: 1.2vh 3vw; }
+  .podium .display-md { font-size: clamp(2.2rem, 7vh, 3.4rem); }
+  .card.place1 { padding-top: 3.4vh; padding-bottom: 2.4vh; }
+  .card.place1 .avatar { width: 15vh; }
+  .card .avatar { width: 11vh; margin-bottom: 1vh; }
+  .card { padding-top: 2.2vh; padding-bottom: 1.8vh; }
+  .pod-award { transform-origin: left top; }
+  .pod-awards { gap: 6px; }
+}

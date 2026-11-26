@@ -88,6 +88,7 @@
     {
       "type": "multiple",
       "text": "Varför kan Louisa inte sova om nätterna?",
+      "timeLimit": 30,
       "options": [
         "Mattias snarkar",
         "Mardrömmar om jobbet",
@@ -141,6 +142,7 @@
     {
       "type": "multiple",
       "text": "Vad heter dokumentären som har gjorts om byn Louisa växte upp i?",
+      "timeLimit": 30,
       "options": [
         "Ett liv bland kor, skog och kristendom",
         "Församlingen, domedagen och våldtäkterna",

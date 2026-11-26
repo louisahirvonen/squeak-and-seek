@@ -39,18 +39,22 @@ Rat birthday theme, Spotify Wrapped–style visual design. Buttons and UI text i
 Two broadcast topics per room code `CODE`:
 
 - `squeak-CODE` — host → phones (websocket send). Events: `state` (phase, q index, type, option count, photo options, `endsIn` ms, correct on reveal), `results` (per-player name/score/rank, + correct/points during reveal), `kick`.
-- `squeak-CODE-host` — phones → host only, sent with **REST `httpSend`** so answers aren't fanned out to every phone (Supabase free plan: 100 msgs/s). Falls back to websocket send if REST fails. Events: `join {id,name}`, `answer {id,q,choice}`, `squeak {id}` (lobby only: the guest tapped their rat; rate-limited to 2/s on both ends).
+- `squeak-CODE-host` — phones → host only, sent with **REST `httpSend`** so answers aren't fanned out to every phone (Supabase free plan: 100 msgs/s). Falls back to websocket send if REST fails. Events: `join {id,name}`, `answer {id,q,choice}`, `squeak {id}` (lobby only: the guest tapped their rat; rate-limited to 2/s on both ends), `leave {id}` (the guest tapped Leave: removed in the lobby, marked `gone` after that).
 
 `state` also carries `k` (a key that is new every time a question is asked; phones remember "I answered" by `k`, never by question number, so "Play again" and a host refresh can't lock a phone out), `limit`, `g` (game number), `dbl` (this question is double), `fin` (the next one is the double final), `wait` (ms the phone holds its reveal while the big screen builds suspense) and, on the podium, `rv`/`el` (when each podium place is revealed, and how long ago the podium started). `results` rows also carry `st` (streak), `d` (places moved), `up {n,g}` / `lead` (gap to the rat above / below the leader), `b` (bonus), `t` (answer time), `f` (fastest), `bd` (birthday rat). New fields must stay optional: a phone on a cached older page ignores them.
 
-Host re-broadcasts `state` every 4 s as a heartbeat. A phone that (re)joins triggers a full `state` + `results` broadcast. Phones keep `{id,name,code}` in localStorage, so reloads rejoin as the same player.
+**Answers are acknowledged.** During a question `state.a` lists `SQ.hash(id)` for every answer the host has; the host sends a `state` right after each answer. A phone that has locked in but does not see itself in `a` sends the answer again every 1.2 s (the host ignores duplicates) and, after the first resend, shows "Sending your answer…". Never show an answer as safe on the phone by any other rule.
+**Who a question waits for:** a player who left (`gone`) or missed two questions in a row (`idle >= 2`) is "away": the question ends early without them, and they are not named in "Waiting for…". They keep their score and count again as soon as they answer or rejoin. Players removed in the lobby go on `S.kicked` (saved with the room) and are refused if they rejoin.
+`results` rows carry `nw` for someone who joined after the current question started (the phone welcomes them instead of "Too slow").
+
+Host re-broadcasts `state` and `results` every 4 s as a heartbeat. A phone that hears nothing for 13 s shows the reconnect banner and opens a fresh connection without changing its screen (`start(true)`). A phone that (re)joins triggers a full `state` + `results` broadcast. Phones keep `{id,name,code}` in localStorage, so reloads rejoin as the same player.
 Answer timing is measured on the **host** clock at receipt. Points = `round(1000 × (1 − t / (2 × limit)))` for correct answers (500–1000), else 0. Several correct options are allowed (`correct: [0, 2]`); a player picks one.
 A `number` question has no options: `state` carries `min`/`max`/`unit`, the phone sends the chosen number as `choice`, and `S.counts` is then a map of guessed value → how many. Only the exact number is correct, unless the question has `"scoring": "closest"`: then `endQuestion` ranks the distinct distances from the right number, the closest group is `correct` with 1000 points, group `g` of `G` gets `round(1000 × (1 − g/G))`, speed is ignored, and a near miss neither breaks nor extends a streak. `state.cl` and `results.off` tell the phone.
 On top of that (all applied in `endQuestion`): a **streak bonus** (2 right in a row +100, 3 +200, 4 or more +300; a miss or no answer resets it) and a **double final question** (`doubleFinal` in `js/config.js`, only when the quiz has 3+ questions; base and bonus are both doubled).
 
 Phases: `title → lobby → intro → question → reveal → leaderboard → … → podium`. Video questions stay in `intro` until the clip ends, then the timer starts.
 Host state is saved to localStorage after each reveal; "Resume room" on the title screen restores it after an accidental refresh.
-The reveal and the leaderboard advance on their own after `autoAdvanceSeconds` (config, 20; 0 turns it off) via `autoNext()`; the lobby, a video intro and the podium never do. Pause is the button next to Next, or **P**.
+The reveal and the leaderboard advance on their own after `autoAdvanceSeconds` (config, 20; 0 turns it off) via `autoNext()`; the lobby, a video intro and the podium never do, and a question nobody answered starts paused so an unattended quiz stops. After an automatic advance `next()` ignores clicks and keys for 1.6 s, so a click aimed at the old screen can't skip the new one. Pause is the button next to Next, or **P**.
 Anything timed inside a phase goes through `later()` in `host.js`, which is cleared on every phase change. Don't use a bare `setTimeout` for phase behaviour.
 
 ## Easter eggs (keep them working, don't advertise them in the UI)
@@ -64,7 +68,8 @@ Anything timed inside a phase goes through `later()` in `host.js`, which is clea
 
 - **Local transport:** add `?transport=local` to both pages to run everything over `BroadcastChannel` in one browser (no Supabase). Add `&slot=1`, `&slot=2`… to player tabs so each gets its own identity.
 - **E2E:** `cd tests && npm install && npx playwright install chromium && npm test`. Plays a full game with 3 players (incl. video, photo, true/false and multi-correct questions), refreshes + resumes the host, checks scores, streaks, rejoin, "Play again", two easter eggs and console errors.
-- **Party-size layout:** `cd tests && npm run crowd` plays the real `questions.json` with 15 players and saves `tests/shots/crowd-*.png`. No assertions; look at the pictures, especially leaderboard and podium. Screenshots go to `tests/shots/` (git-ignored). **Run it after every change and look at the screenshots** — layout bugs don't throw errors.
+- **Night-of failures:** `cd tests && npm run round2` checks the fixes from the second bug round: a lost answer is resent, Leave and Remove, late joiners, the unattended-quiz hold, hold-to-repeat on the counter, and Resume as the main button after a refresh.
+- **Party-size layout:** `cd tests && npm run crowd` (add `W=1280 H=720` in front for a small projector) plays the real `questions.json` with 15 players and saves `tests/shots/crowd-*.png`. No assertions; look at the pictures, especially leaderboard and podium. Screenshots go to `tests/shots/` (git-ignored). **Run it after every change and look at the screenshots** — layout bugs don't throw errors.
 - **Real Supabase:** serve the folder (`python3 -m http.server`) or use the live site, open `host.html`, then join from a phone. The room-code chip in the top bar turns coral if the host can't reach Supabase.
 
 ## Gotchas learned the hard way
@@ -75,6 +80,9 @@ Anything timed inside a phase goes through `later()` in `host.js`, which is clea
 - Browsers block audio until a click; "Start the party" unlocks it. Phones never play audio.
 - `navigator.vibrate` errors in automated tests are harmless (no real tap).
 - The reveal and the podium are staged with CSS `animation-delay` (0.9 s for the right answer; `--d` per podium card). Anything that must look right without animation needs a rule in the `prefers-reduced-motion` block at the end of `app.css`.
+- **Never play the game's audio from an automated run.** Louisa could not find or stop music that a hidden page was playing. Tests launch Chromium headless with `--mute-audio`; do the same in any new script, and do not open the game in a visible browser or preview pane to check something.
+- After a refresh the title screen's main button is "Resume room"; "Start a new party" asks first, because it throws the running game away. A saved room is offered for 12 hours, so a test in the afternoon leaves a Resume button for the evening: start a new party then.
+- Short projector screens (720p, 768p) have their own rules under `@media (max-height: 800px)`; check them with the `W`/`H` crowd run.
 - Don't add emoji to the UI; the design uses the SVG glyphs in `common.js` and the bundled fonts (Bricolage Grotesque + DM Sans).
 
 ## Working with Louisa

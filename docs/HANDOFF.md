@@ -40,6 +40,15 @@ After 1–2 minutes: https://louisahirvonen.github.io/squeak-and-seek/host.html.
 - Added: streak bonus, double-points final question, staged answer reveal with answer-share bars and "fastest paw", animated leaderboard (rows slide, scores count up, movement arrows, biggest climber, gap to the lead), staged podium with drumroll, awards and the full standings, last-five-seconds tension (faster music, rising ticks, red pulse), who has answered / who we are waiting for, colour wipe between screens, richer phone result screens, easter eggs (see CLAUDE.md).
 - Still to try on real hardware: the sound mix on the projector speakers, and vibration on iPhones (Safari has no vibration; Android does).
 
+## Bug-fix round 2 (branch `bugfix-round-2`, 2026-11-26)
+
+Four test agents played the game (misbehaving players, the big screen at three projector sizes, phones at five sizes, and a code read).
+
+- Fixed: a locked-in answer could be lost without the phone knowing (now acknowledged and resent); a missed result left a phone on "Checking answers…"; "Leave" left an empty seat that made every question run the full clock; a removed guest could walk back in; the quiz played itself to the end with nobody there; a click just after an automatic advance skipped the leaderboard; after a refresh the main button started a new party and threw the game away; no visible warning when the game server is unreachable; phones on a dead connection now reconnect by themselves.
+- Layout: number chart overflow with many guesses, number reveal showing the answer early, leaderboard and podium on 720p/768p, sideways phones, the join screen on small phones.
+- Smaller: hold the arrow to run the number counter, one birthday rat only, late joiners are welcomed, join-form messages, copy slips, 30 s for the two long-text questions.
+- Not done, by choice: shared places for exact ties; removing a player in the middle of a game; hiding the answers in `questions.json` (anyone who opens that file on the live site can read them).
+
 ## Nice-to-haves (only if time allows)
 
 - Show the question text on phones for accessibility (currently big screen only, by design).

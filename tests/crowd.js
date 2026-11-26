@@ -31,7 +31,7 @@ const server = http.createServer((req, res) => {
   const shot = (p, name) => p.screenshot({ path: path.join(SHOTS, `crowd-${name}.png`) });
   const host = await ctx.newPage();
   host.on('pageerror', (e) => console.log('host error:', e.message));
-  await host.setViewportSize({ width: 1440, height: 900 });
+  await host.setViewportSize({ width: Number(process.env.W) || 1440, height: Number(process.env.H) || 900 }); // W=1280 H=720 npm run crowd checks a small projector
   await host.goto(`${base}host.html?transport=local`);
   await host.click('#btnStart'); await sleep(400);
   const code = (await host.textContent('#barCode')).trim();

@@ -14,7 +14,7 @@
 
   let link = null; let joined = false; let lastState = null; let mine = null; let shownKey = '';
   let lastHeard = 0; let joinRetry = null; let countdown = null; let notFoundTimer = null;
-  let holdTimer = null; let lastSqueak = 0; let partied = ''; let shownScore = 0;
+  let holdTimer = null; let lastSqueak = 0; let partied = ''; let shownScore = 0; let resendTimer = null; let stepTimer = null;
   const avatar = (id, cls = '') => SQ.avatar(id, cls, SQ.isBirthday(me.name) || !!(mine && mine.bd));
   const buzz = (pattern) => { try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* not supported */ } };
   // Small arrows instead of emoji.
@@ -23,10 +23,10 @@
   const WRONG = ['Next one is yours.', 'The cheese was a trap.', 'Shake it off, whiskers.', 'Even the best rats miss.', 'Plenty of cheese left.'];
   const LOCKED = ['Fingers crossed', 'Paws crossed', 'No take-backs', 'Bold choice', 'Locked and loaded'];
   const answers = (() => { try { return JSON.parse(sessionStorage.getItem('squeak-answers')) || {}; } catch (e) { return {}; } })();
-  const saveMe = () => localStorage.setItem(STORE, JSON.stringify(me));
+  const saveMe = () => { try { localStorage.setItem(STORE, JSON.stringify(me)); } catch (e) { /* private mode */ } };
 
   // ---------- join ----------
-  function renderJoin(message = '') {
+  function renderJoin(message = '', lastCode = '') {
     shownKey = 'join';
     document.body.dataset.phase = 'join';
     screen.innerHTML = `
@@ -36,7 +36,7 @@
         <h1 class="display sm">Squeak<br><em>&amp;</em> Seek</h1>
         ${message ? `<p class="p-msg">${esc(message)}</p>` : ''}
         <form id="joinForm" autocomplete="off">
-          <label>Room code<input id="code" inputmode="text" autocapitalize="characters" maxlength="4" placeholder="ABCD" value="${esc(urlRoom || me.code)}" required></label>
+          <label>Room code<input id="code" inputmode="text" autocapitalize="characters" maxlength="4" placeholder="ABCD" value="${esc(urlRoom || me.code || lastCode)}" required></label>
           <label>Your name<input id="name" maxlength="15" placeholder="e.g. Cheddar Chad" value="${esc(me.name)}" required></label>
           <button class="btn primary big" type="submit">Join the party &rarr;</button>
         </form>
@@ -47,29 +47,41 @@
     $('#code').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); });
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const code = $('#code').value.trim().toUpperCase(); const name = $('#name').value.trim();
-      if (code.length !== 4 || !name) return;
+      const code = $('#code').value.trim().toUpperCase(); const name = $('#name').value.replace(/\s+/g, ' ').trim();
+      const problem = code.length !== 4 ? 'The room code is the four letters on the big screen.' : !name ? 'Type a name so we know who you are.' : '';
+      if (problem) {
+        let m = form.querySelector('.p-msg'); if (!m) { m = document.createElement('p'); m.className = 'p-msg'; form.prepend(m); }
+        m.textContent = problem; (code.length !== 4 ? $('#code') : $('#name')).focus(); return;
+      }
       if (code !== me.code) { me.id = SQ.uid(); }
       me.code = code; me.name = name; saveMe();
       SQ.keepAwake();
       start();
     });
-    if (!urlRoom && !me.code) $('#code').focus(); else if (!me.name) $('#name').focus();
+    if (!urlRoom && !me.code && !lastCode) $('#code').focus(); else if (!me.name) $('#name').focus();
   }
 
-  function start() {
-    joined = false; lastState = null; mine = null;
+  // quiet = true: only swap the connection for a fresh one and leave the screen as it is.
+  function start(quiet) {
     SQ.keepAwake(); // also after an automatic rejoin, not only after tapping Join
-    renderWaiting('Finding the party…');
+    if (!quiet) { joined = false; lastState = null; mine = null; renderWaiting('Finding the party…'); }
+    lastHeard = Date.now();
     if (link) link.close();
     link = SQ.connect({
       code: me.code, role: 'player', events: ['state', 'results', 'kick'], onMessage,
       onStatus: (s) => { $('#conn').hidden = s === 'SUBSCRIBED'; if (s === 'SUBSCRIBED') sendJoin(); },
     });
     clearInterval(joinRetry);
-    joinRetry = setInterval(() => { if (!joined || Date.now() - lastHeard > 9000) sendJoin(); }, 3000);
+    joinRetry = setInterval(() => {
+      const quietFor = Date.now() - lastHeard;
+      // The big screen speaks every 4 seconds. A long silence means this connection has died without saying so
+      // (wifi to mobile data, a phone that slept): show it, and open a new one.
+      if (joined && quietFor > 13000) { $('#conn').hidden = false; return start(true); }
+      if (!joined || quietFor > 9000) sendJoin();
+    }, 3000);
+    if (quiet) return;
     clearTimeout(notFoundTimer);
-    notFoundTimer = setTimeout(() => { if (!joined) renderWaiting(`Can't find room ${me.code} yet. Check the code on the big screen.`, true); }, 9000);
+    notFoundTimer = setTimeout(() => { if (!joined) renderWaiting(`Can't find room ${me.code} yet. Check the code on the big screen.`, true); }, 6000);
   }
   const sendJoin = () => link && link.send('join', { id: me.id, name: me.name }).catch(() => {});
 
@@ -90,16 +102,30 @@
       lastState = msg; msg.at = Date.now();
       if (!joined) return;
       render(false);
+      checkSent();
     }
+  }
+
+  // An answer is only safe once the big screen says it has it. Until then, keep sending it.
+  const arrived = (s) => !s || s.phase !== 'question' || !s.k || answers[s.k] === undefined || (Array.isArray(s.a) ? s.a.includes(SQ.hash(me.id)) : true);
+  function checkSent() {
+    const s = lastState; const ok = arrived(s);
+    clearTimeout(resendTimer);
+    if (ok) { const note = $('#pSent'); if (note) note.hidden = true; return; }
+    resendTimer = setTimeout(() => {
+      if (arrived(lastState)) return;
+      const note = $('#pSent'); if (note) note.hidden = false;
+      send(lastState.q, answers[lastState.k]); checkSent();
+    }, 1200);
   }
 
   // ---------- screens ----------
   function render(fromResults) {
     const s = lastState; if (!s) return;
-    const key = `${s.phase}:${s.q}:${me.name}:${s.phase === 'reveal' || s.phase === 'leaderboard' || s.phase === 'podium' ? (mine ? [mine.phase, mine.q, mine.s, mine.k, mine.c].join('/') : '') : ''}`;
+    const key = `${s.phase}:${s.q}:${me.name}:${s.phase === 'reveal' || s.phase === 'leaderboard' || s.phase === 'podium' ? (mine ? [mine.phase, mine.q, mine.s, mine.k, mine.c].join('/') : '') : s.phase === 'lobby' && mine ? mine.s : ''}`;
     if (key === shownKey) return;
     shownKey = key;
-    clearInterval(countdown); clearTimeout(holdTimer);
+    clearInterval(countdown); clearTimeout(holdTimer); clearInterval(stepTimer); clearTimeout(stepTimer);
     document.body.dataset.phase = s.phase;
     document.body.dataset.tone = ['pink', 'lime', 'lilac', 'orange', 'sky'][Math.max(0, s.q) % 5];
     delete document.body.dataset.result; delete document.body.dataset.urgent;
@@ -113,7 +139,7 @@
     (function step(now) { const k = Math.min(1, (now - t0) / 900); el.textContent = fmt(Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)))); if (k < 1 && el.isConnected) requestAnimationFrame(step); })(t0);
   }
   const moveLine = (r) => (r.d > 0 ? `${ARROW('up')} Up ${r.d} place${r.d === 1 ? '' : 's'}` : r.d < 0 ? `${ARROW('down')} Down ${-r.d} place${r.d === -1 ? '' : 's'}` : '');
-  const gapLine = (r) => (r.up ? (r.up.g === 0 ? `Tied with ${esc(r.up.n)}` : `${fmt(r.up.g)} points behind ${esc(r.up.n)}`) : r.lead !== undefined ? (r.lead === 0 ? 'Tied at the top' : `Leading by ${fmt(r.lead)} points`) : '');
+  const gapLine = (r) => (r.up ? (r.up.g === 0 ? `Tied with ${esc(r.up.n)}` : `${fmt(r.up.g)} point${r.up.g === 1 ? '' : 's'} behind ${esc(r.up.n)}`) : r.lead !== undefined ? (r.lead === 0 ? 'Tied at the top' : `Leading by ${fmt(r.lead)} point${r.lead === 1 ? '' : 's'}`) : '');
 
   function renderWaiting(text, showLeave) {
     shownKey = 'waiting';
@@ -160,8 +186,9 @@
     const lockIn = (value) => {
       answers[key] = value; try { sessionStorage.setItem('squeak-answers', JSON.stringify(answers)); } catch (e) { /* private mode */ }
       buzz(30);
-      send(s.q, value, 0);
+      send(s.q, value);
       shownKey = ''; render(false);
+      checkSent();
     };
     const startBar = () => {
       const bar = $('#pBar'); const secs = $('#pSecs'); let lastSec = null;
@@ -189,9 +216,17 @@
           <button class="btn primary big" id="pLock">Lock in &rarr;</button>
         </section>`;
       const out = $('#pVal');
-      const step = (d) => { const v = Math.max(min, Math.min(max, value + d)); if (v === value) return buzz(40); value = v; out.textContent = v; out.classList.remove('p-bump'); void out.offsetWidth; out.classList.add('p-bump'); buzz(10); $('#pMinus').disabled = v === min; $('#pPlus').disabled = v === max; };
+      const step = (d) => { const v = Math.max(min, Math.min(max, value + d)); if (v === value) { clearInterval(stepTimer); return buzz(40); } value = v; out.textContent = v; out.classList.remove('p-bump'); void out.offsetWidth; out.classList.add('p-bump'); buzz(10); $('#pMinus').disabled = v === min; $('#pPlus').disabled = v === max; };
       $('#pMinus').disabled = true;
-      $('#pMinus').addEventListener('click', () => step(-1)); $('#pPlus').addEventListener('click', () => step(1));
+      // One tap is one step; holding the button runs, slowly at first and then fast.
+      const stop = () => { clearTimeout(stepTimer); clearInterval(stepTimer); };
+      [['#pMinus', -1], ['#pPlus', 1]].forEach(([sel, d]) => {
+        const b = $(sel);
+        b.addEventListener('pointerdown', (e) => { if (e.button) return; stop(); step(d); stepTimer = setTimeout(() => { stepTimer = setInterval(() => step(d), 80); }, 380); });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, stop));
+        b.addEventListener('click', (e) => { if (e.detail === 0) step(d); }); // keyboard
+        b.addEventListener('contextmenu', (e) => e.preventDefault());
+      });
       $('#pLock').addEventListener('click', () => lockIn(value));
       return startBar();
     }
@@ -210,10 +245,8 @@
     screen.querySelectorAll('.p-answer').forEach((b) => b.addEventListener('click', () => lockIn(Number(b.dataset.i))));
   }
 
-  function send(q, choice, attempt) {
-    link.send('answer', { id: me.id, q, choice }).then((ok) => { if (!ok && attempt < 2) setTimeout(() => send(q, choice, attempt + 1), 400); })
-      .catch(() => { if (attempt < 2) setTimeout(() => send(q, choice, attempt + 1), 400); });
-  }
+  // Sent again by checkSent() until the big screen confirms it.
+  function send(q, choice) { if (link) link.send('answer', { id: me.id, q, choice }).catch(() => {}); }
 
   function pLocked(s, picked) {
     const num = s.type === 'number';
@@ -224,6 +257,7 @@
         <p class="kicker">Answer locked in</p>
         <h2 class="p-title">${pickLine(LOCKED, me.id + (s.k || s.q))}</h2>
         <p class="p-lede">Watch the big screen.</p>
+        <p class="p-sent" id="pSent" hidden>Sending your answer&hellip;</p>
       </section>`;
   }
 
@@ -233,11 +267,13 @@
     const waiting = () => { screen.innerHTML = `${header(before)}<section class="p-center"><div class="loader"><span></span><span></span><span></span></div><p class="p-lede">Checking answers&hellip;</p></section>`; };
     if (!r) return waiting();
     const show = () => {
+      const last = s.q + 1 >= s.total;
       let cls = 'none', kicker = 'Out of time', title = 'Too slow', sub = 'No answer this time.';
+      if (r.nw) { kicker = 'You\'re in'; title = 'Welcome'; sub = last ? 'Just in time for the results.' : 'The next question is yours.'; }
       if (r.c === true) {
         cls = 'right'; kicker = r.f ? 'Correct, and the fastest in the room' : r.t !== undefined && r.t < 1.5 ? 'Correct. Lightning paws.' : 'Correct'; title = `+${fmt(r.p)}`;
-        sub = r.b ? `${r.st} in a row: +${fmt(r.b)} streak bonus${s.dbl ? ', doubled' : ''}.` : s.dbl ? 'Double points. ' + pickLine(RIGHT, me.id + s.q) : pickLine(RIGHT, me.id + s.q);
-      } else if (r.c === false) { cls = 'wrong'; kicker = 'Not quite'; title = 'Rats.'; sub = pickLine(WRONG, me.id + s.q); }
+        sub = r.b ? `${s.dbl ? 'Double points. ' : ''}${r.st} in a row: +${fmt(r.b)} streak bonus.` : s.dbl ? 'Double points. ' + pickLine(RIGHT, me.id + s.q) : pickLine(RIGHT, me.id + s.q);
+      } else if (r.c === false) { cls = 'wrong'; kicker = 'Not quite'; title = 'Rats.'; sub = last ? 'That was the last one.' : pickLine(WRONG, me.id + s.q); }
       const unitTxt = s.unit ? ' ' + esc(s.unit) : '';
       if (s.cl && r.c === true && r.off > 0) { kicker = 'Closest guess in the room'; sub = `Only ${r.off} off. The answer was ${s.correct[0]}${unitTxt}.`; }
       if (s.cl && r.c === false && r.p > 0) { cls = 'near'; kicker = r.off === 1 ? 'So close' : 'Not far off'; title = `+${fmt(r.p)}`; sub = `${r.off} off. The answer was ${s.correct[0]}${unitTxt}.`; }
@@ -301,9 +337,12 @@
   }
 
   function leave(message) {
-    if (link) link.close(); link = null; joined = false; clearInterval(joinRetry); clearTimeout(notFoundTimer);
+    const old = link; const keep = me.code;
+    // Tell the big screen, so no empty seat is left behind (not when the host removed us).
+    if (old && joined && !message) old.send('leave', { id: me.id }).catch(() => {}).then(() => old.close()); else if (old) old.close();
+    link = null; joined = false; clearTimeout(resendTimer); clearInterval(joinRetry); clearTimeout(notFoundTimer);
     me.code = ''; me.id = SQ.uid(); saveMe();
-    renderJoin(message);
+    renderJoin(message, keep);
   }
 
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && link) { sendJoin(); } });

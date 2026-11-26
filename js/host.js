@@ -21,17 +21,17 @@
     phase: 'title', code: null, title: 'Squeak & Seek', questions: [], errors: [], loadError: null,
     players: {}, qi: -1, done: 0, answers: {}, counts: [], qStart: 0, limit: 20, endsAt: 0, seq: 0,
     prevScores: {}, prevRanks: {}, moves: false, fastest: null, lastTick: null,
-    game: 1, qKey: '', podStart: 0, podTimes: null, squeaks: 0,
+    game: 1, qKey: '', podStart: 0, podTimes: null, squeaks: 0, kicked: [], qWall: 0,
   };
   let link = null; let heartbeat = null; let timerRaf = null; let introTimer = null; let ending = false;
-  let timers = []; let lastNext = 0; const lobbySeen = new Set(); const lastSqueak = {};
+  let timers = []; let lastNext = 0; let offlineTimer = null; let offline = false; const lobbySeen = new Set(); const lastSqueak = {};
   // Timers that belong to the current phase: all cleared when the phase changes.
   const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.push(t); return t; };
   const avatar = (id, cls = '') => SQ.avatar(id, cls, !!S.players[id]?.bday);
   const isDouble = (qi = S.qi) => SQ.cfg.doubleFinal !== false && total() >= 3 && qi === total() - 1;
 
   // ---------- persistence ----------
-  const persist = () => localStorage.setItem(STORE, JSON.stringify({ code: S.code, players: S.players, done: S.done, game: S.game, savedAt: Date.now() }));
+  const persist = () => localStorage.setItem(STORE, JSON.stringify({ code: S.code, players: S.players, done: S.done, game: S.game, kicked: S.kicked, savedAt: Date.now() }));
   const loadSaved = () => { try { return JSON.parse(localStorage.getItem(STORE)); } catch (e) { return null; } };
 
   // ---------- helpers ----------
@@ -41,6 +41,9 @@
     .sort((a, b) => b.score - a.score || (a.reachedAt || 0) - (b.reachedAt || 0) || a.joinedAt - b.joinedAt);
   const playerCount = () => Object.keys(S.players).length;
   const answeredCount = () => Object.keys(S.answers).length;
+  // A rat who left, or who let two questions in a row go by, is taken to be away: the question does not wait for them.
+  const away = (p) => !!p.gone || (p.idle || 0) >= 2;
+  const waitingFor = () => Object.entries(S.players).filter(([id, p]) => !S.answers[id] && !away(p));
   // The folder this page is served from (works for /host.html and for /host without the extension).
   const baseUrl = () => new URL('.', location.href).href;
   const joinUrl = () => `${baseUrl()}?room=${S.code}${SQ.isLocal ? '&transport=local' : ''}`;
@@ -50,9 +53,16 @@
   // ---------- networking ----------
   function connect() {
     if (link) link.close();
-    link = SQ.connect({ code: S.code, role: 'host', events: ['join', 'answer', 'squeak'], onMessage, onStatus: (s) => { $('#barCode')?.classList.toggle('offline', s !== 'SUBSCRIBED'); if (s === 'SUBSCRIBED') broadcastAll(); } });
+    link = SQ.connect({ code: S.code, role: 'host', events: ['join', 'answer', 'squeak', 'leave'], onMessage, onStatus: (s) => {
+      $('#barCode')?.classList.toggle('offline', s !== 'SUBSCRIBED');
+      clearTimeout(offlineTimer);
+      if (s === 'SUBSCRIBED') { if (offline) { offline = false; toast('Back online'); } broadcastAll(); }
+      // Say it out loud when the game server cannot be reached: the lobby looks normal otherwise.
+      else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') offlineTimer = setTimeout(() => { offline = true; toast('No connection to the game server. Check the internet on this laptop.', 8000); }, 1500);
+    } });
     clearInterval(heartbeat);
-    heartbeat = setInterval(() => { if (S.phase !== 'title') broadcastState(); }, 4000);
+    // Repeats the standings too: a phone that missed its result gets it on the next beat.
+    heartbeat = setInterval(() => { if (S.phase !== 'title') broadcastAll(); }, 4000);
   }
 
   function statePayload() {
@@ -66,7 +76,10 @@
       if (S.phase === 'reveal') p.wait = REVEAL_MS;
       if (cq.type === 'photo') p.opts = cq.options.map((o) => ({ label: o.label, image: o.image }));
       if (cq.type === 'number') { p.min = cq.min; p.max = cq.max; p.unit = cq.unit; if (cq.closest) p.cl = true; }
-      if (S.phase === 'question') p.endsIn = Math.max(0, S.endsAt - performance.now());
+      if (S.phase === 'question') {
+        p.endsIn = Math.max(0, S.endsAt - performance.now());
+        p.a = Object.keys(S.answers).map(SQ.hash); // whose answers have arrived: a phone resends until it sees itself here
+      }
       if (S.phase === 'reveal') p.correct = cq.correct;
     }
     return p;
@@ -87,6 +100,7 @@
       }
       if (S.phase === 'reveal' && q()) {
         o.c = a ? a.correct : null; o.p = a ? a.points : 0;
+        if (!a && S.qWall && p.joinedAt > S.qWall) o.nw = 1; // walked in during this question
         if (a) { o.b = a.bonus || 0; o.t = Math.round(a.t * 10) / 10; if (S.fastest === p.id) o.f = 1; if (a.off !== undefined) o.off = a.off; }
       }
     });
@@ -99,6 +113,14 @@
     if (event === 'join') return onJoin(msg);
     if (event === 'answer') return onAnswer(msg);
     if (event === 'squeak') return onSqueak(msg);
+    if (event === 'leave') return onLeave(msg);
+  }
+
+  // A guest tapped "Leave" on their phone: out of the lobby, or no longer waited for once the quiz is running.
+  function onLeave({ id }) {
+    const p = S.players[id]; if (!p) return;
+    if (S.phase === 'lobby') { delete S.players[id]; lobbySeen.delete(id); persist(); renderLobbyPlayers(); broadcastAll(); return; }
+    p.gone = true; persist(); updateAnswered(); checkAllIn();
   }
 
   // A guest tapped their rat in the lobby: it squeaks and wiggles on the big screen.
@@ -112,13 +134,15 @@
   }
 
   function onJoin({ id, name }) {
+    if (S.kicked.includes(id)) return link.send('kick', { id }); // removed by the host: stays out, even if the phone missed it
     const existing = S.players[id];
+    if (existing && existing.gone) { existing.gone = false; existing.idle = 0; persist(); }
     if (!existing) {
       let clean = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 15) || 'Rat';
       const taken = new Set(Object.values(S.players).map((p) => p.name.toLowerCase()));
       let final = clean; let n = 2;
       while (taken.has(final.toLowerCase())) final = `${clean.slice(0, 12)} ${n++}`;
-      const bday = SQ.isBirthday(clean);
+      const bday = SQ.isBirthday(clean) && !Object.values(S.players).some((p) => p.bday); // one birthday rat only
       S.players[id] = { name: final, score: 0, reachedAt: 0, joinedAt: Date.now(), streak: 0, best: 0, right: 0, climb: 0, bday };
       persist();
       A.sfx.squeak();
@@ -142,8 +166,11 @@
     S.answers[id] = { choice, t, correct, base, points: base, bonus: 0, at: Date.now() }; // streak bonus and doubling are added in endQuestion
     updateAnswered();
     A.sfx.pop();
-    if (answeredCount() >= playerCount()) later(endQuestion, 400);
+    broadcastState(); // tells the phone its answer arrived
+    checkAllIn();
   }
+  // Everyone we are waiting for has answered: no need to run the clock down.
+  function checkAllIn() { if (S.phase === 'question' && answeredCount() > 0 && !waitingFor().length) later(endQuestion, 400); }
 
   // Question screen: the counter, a face for everyone who has locked in, and who we are still waiting for.
   function updateAnswered() {
@@ -153,7 +180,7 @@
     if (faces) Object.keys(S.answers).forEach((id) => { if (!faces.querySelector(`[data-id="${CSS.escape(id)}"]`)) faces.insertAdjacentHTML('beforeend', `<span class="q-face pop-in" data-id="${esc(id)}">${avatar(id)}</span>`); });
     const wait = $('#qWaiting');
     if (wait) {
-      const left = Object.entries(S.players).filter(([id]) => !S.answers[id]).map(([, p]) => p.name);
+      const left = waitingFor().map(([, p]) => p.name);
       wait.textContent = left.length && left.length <= 3 && answeredCount() >= left.length ? `Waiting for ${left.join(', ')}` : '';
     }
   }
@@ -174,8 +201,8 @@
   function startParty(resume) {
     A.ensure(); SQ.keepAwake();
     const saved = resume ? loadSaved() : null;
-    if (saved) { S.code = saved.code; S.players = saved.players || {}; S.done = saved.done || 0; S.game = saved.game || 1; }
-    else { S.code = makeCode(); S.players = {}; S.done = 0; S.game = 1; localStorage.removeItem(STORE); }
+    if (saved) { S.code = saved.code; S.players = saved.players || {}; S.done = saved.done || 0; S.game = saved.game || 1; S.kicked = saved.kicked || []; }
+    else { S.code = makeCode(); S.players = {}; S.done = 0; S.game = 1; S.kicked = []; localStorage.removeItem(STORE); }
     S.prevRanks = Object.fromEntries(ranked().map((p, i) => [p.id, i])); S.moves = false;
     persist(); connect();
     $('#bar').hidden = false; $('#barCode').textContent = S.code;
@@ -219,7 +246,7 @@
   function startQuestion() {
     const cq = q();
     S.limit = cq.timeLimit; S.answers = {};
-    S.qStart = performance.now(); S.endsAt = S.qStart + S.limit * 1000; S.lastTick = null;
+    S.qWall = Date.now(); S.qStart = performance.now(); S.endsAt = S.qStart + S.limit * 1000; S.lastTick = null;
     go('question');
     A.sfx.go(); A.playSlot('question');
     const loop = () => {
@@ -265,16 +292,17 @@
     }
     Object.entries(S.players).forEach(([id, p]) => {
       const a = S.answers[id];
+      p.idle = a ? 0 : (p.idle || 0) + 1;
       if (a) S.counts[a.choice] = (S.counts[a.choice] || 0) + 1;
       // Close but not closest: points, and the streak is neither broken nor extended.
       if (a && !a.correct && cq.closest && a.base > 0) { a.points = a.base * mult; p.score += a.points; p.reachedAt = a.at; return; }
       if (!a || !a.correct) { p.streak = 0; return; }
       p.streak = (p.streak || 0) + 1; p.best = Math.max(p.best || 0, p.streak); p.right = (p.right || 0) + 1;
-      p.fast = Math.min(p.fast ?? 999, a.t);
+      if (!cq.closest) p.fast = Math.min(p.fast ?? 999, a.t); // speed plays no part in a closest-guess question
       a.bonus = SQ.streakBonus(p.streak) * mult;
       a.points = a.base * mult + a.bonus;
       p.score += a.points; p.reachedAt = a.at;
-      if (!S.fastest || a.t < S.answers[S.fastest].t) S.fastest = id;
+      if (!cq.closest && (!S.fastest || a.t < S.answers[S.fastest].t)) S.fastest = id;
     });
     if (S.moves) ranked().forEach((p, i) => { const up = S.prevRanks[p.id] - i; const pl = S.players[p.id]; if (up > (pl.climb || 0)) pl.climb = up; });
     S.done = S.qi + 1; persist();
@@ -284,9 +312,10 @@
     later(() => { if (right >= Math.max(1, playerCount() / 2)) A.sfx.chime(); else A.sfx.womp(); }, REVEAL_MS);
   }
 
-  function next() {
-    // A double press (or Space right after a click) must not skip a whole screen.
-    const now = performance.now(); if (now - lastNext < 450) return; lastNext = now;
+  function next(auto) {
+    // A double press (or Space right after a click) must not skip a whole screen. After the screen moved on by
+    // itself the guard is longer: a click aimed at the old screen must not skip the new one.
+    const now = performance.now(); if (now < lastNext) return; lastNext = now + (auto === true ? 1600 : 450);
     if (S.phase === 'lobby' && playerCount() > 0) return nextQuestion();
     if (S.phase === 'reveal') { if (S.qi + 1 >= total()) return go('podium'); go('leaderboard'); A.sfx.whoosh(); A.playSlot('lobby'); return; }
     if (S.phase === 'leaderboard') return nextQuestion();
@@ -296,24 +325,25 @@
   function autoNext() {
     const btn = $('#btnNext'); let left = Math.round(Number(SQ.cfg.autoAdvanceSeconds ?? 20));
     if (!btn || !(left > 0)) return;
-    const phase = S.phase; let paused = false;
+    const phase = S.phase; let paused = !answeredCount(); // nobody played this one: wait for the host instead of running on alone
     const hold = document.createElement('button'); hold.className = 'btn ghost small'; hold.id = 'btnHold'; hold.textContent = 'Pause';
     const wrap = document.createElement('div'); wrap.className = 'auto-wrap';
     btn.replaceWith(wrap); wrap.append(hold, btn);
     btn.insertAdjacentHTML('beforeend', `<span class="auto-count" id="autoCount">${left}</span>`);
+    if (paused) { hold.textContent = 'Resume'; wrap.classList.add('paused'); }
     hold.addEventListener('click', () => { paused = !paused; hold.textContent = paused ? 'Resume' : 'Pause'; wrap.classList.toggle('paused', paused); });
     const tick = () => {
       if (S.phase !== phase) return;
       // Stand still while paused or while the music dialog is open.
       if (!paused && !$('#soundDialog').open) { left -= 1; const c = $('#autoCount'); if (c) c.textContent = left; }
-      if (left <= 0) return next();
+      if (left <= 0) { lastNext = 0; return next(true); }
       later(tick, 1000);
     };
     later(tick, 1000);
   }
 
   function playAgain() {
-    Object.values(S.players).forEach((p) => Object.assign(p, { score: 0, reachedAt: 0, streak: 0, best: 0, right: 0, climb: 0, fast: undefined }));
+    Object.values(S.players).forEach((p) => Object.assign(p, { score: 0, reachedAt: 0, streak: 0, best: 0, right: 0, climb: 0, fast: undefined, idle: 0 }));
     S.qi = -1; S.done = 0; S.answers = {}; S.game += 1; S.prevScores = {}; S.prevRanks = {}; S.moves = false; persist(); go('lobby');
   }
 
@@ -351,8 +381,8 @@
           <p class="lede">${total()} question${total() === 1 ? '' : 's'}. One winner. Grab your phone.</p>
           ${problems.length ? `<div class="errors"><strong>Fix these in questions.json</strong><ul>${problems.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}
           <div class="actions">
-            <button class="btn primary big" id="btnStart" ${!total() || S.loadError ? 'disabled' : ''}>Start the party &rarr;</button>
-            ${canResume ? `<button class="btn ghost big" id="btnResume">Resume room ${esc(saved.code)} &middot; ${Object.keys(saved.players).length} players, ${saved.done} done</button>` : ''}
+            ${canResume ? `<button class="btn primary big" id="btnResume" ${!total() || S.loadError ? 'disabled' : ''}>Resume room ${esc(saved.code)} &middot; ${Object.keys(saved.players).length} players, ${saved.done} done &rarr;</button>` : ''}
+            <button class="btn ${canResume ? 'ghost' : 'primary'} big" id="btnStart" ${!total() || S.loadError ? 'disabled' : ''}>${canResume ? 'Start a new party' : 'Start the party &rarr;'}</button>
           </div>
           <details class="sound-details"><summary>Music &amp; sound</summary><div id="titleAudio"></div></details>
           ${SQ.isLocal ? '<p class="hint">Local test mode: open player tabs in this same browser.</p>' : ''}
@@ -362,7 +392,7 @@
           <div class="mascot hero float" id="titleRat">${birthdayRat()}</div>
         </div>
       </section>`;
-    $('#btnStart')?.addEventListener('click', () => startParty(false));
+    $('#btnStart')?.addEventListener('click', () => { if (!canResume || confirm(`Start a new party? Room ${saved.code} and its scores will be gone, and everyone has to join again.`)) startParty(false); });
     $('#btnResume')?.addEventListener('click', () => startParty(true));
     // Easter egg: poke the birthday rat. Five pokes and it rains cheese.
     let pokes = 0;
@@ -421,7 +451,7 @@
     const btn = $('#btnGo'); btn.disabled = !list.length;
     box.querySelectorAll('.guest').forEach((b) => b.addEventListener('click', () => {
       const p = S.players[b.dataset.id];
-      if (p && confirm(`Remove ${p.name} from the game?`)) { delete S.players[b.dataset.id]; lobbySeen.delete(b.dataset.id); persist(); link.send('kick', { id: b.dataset.id }); renderLobbyPlayers(); broadcastAll(); }
+      if (p && confirm(`Remove ${p.name} from the game?`)) { delete S.players[b.dataset.id]; lobbySeen.delete(b.dataset.id); S.kicked.push(b.dataset.id); persist(); link.send('kick', { id: b.dataset.id }); renderLobbyPlayers(); broadcastAll(); }
     }));
   }
 
@@ -664,9 +694,9 @@
   }
 
   let toastTimer = null;
-  function toast(text) {
+  function toast(text, ms = 2500) {
     let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
-    t.textContent = text; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+    t.textContent = text; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
   }
 
   // ---------- controls ----------
@@ -678,7 +708,7 @@
     paint(); $('#soundDialog').showModal();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.target.closest('input, select, textarea, dialog')) return;
+    if (e.repeat || e.target.closest('input, select, textarea, dialog')) return;
     if (!e.metaKey && !e.ctrlKey && !e.altKey) secretKey(e.key);
     if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); next(); }
     if (e.key === 'm' || e.key === 'M') $('#btnMute').click();
