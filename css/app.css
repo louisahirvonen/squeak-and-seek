@@ -730,7 +730,7 @@ body.player[data-phase="reveal"] .screen, body.player[data-phase="leaderboard"] 
 @keyframes writeWin { to { background: var(--lime); box-shadow: 0 0 0 4px var(--paper); } }
 @media (prefers-reduced-motion: reduce) { .reveal .write-opt.correct { background: var(--lime); } .reveal .write-opt.other { opacity: .55; } }
 /* with many answers on screen the rat steps aside */
-.question.write.voting .q-visual .mascot, .question.write.reveal .q-visual .mascot { display: none; }
+.question.write.voting .q-visual .mascot, .question.write.reveal .q-visual .mascot, .question.write.voting .q-visual .media, .question.write.reveal .q-visual .media { display: none; }
 .question.write.voting .q-body, .question.write.reveal .q-body { min-height: 0; flex: 0 1 auto; }
 /* phone */
 .p-write { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 14px 20px 20px; }

@@ -46,7 +46,8 @@
           "icon": "media/city-bern.svg"
         }
       ],
-      "correct": 3
+      "correct": 3,
+      "image": "media/meadow.jpg"
     },
     {
       "type": "vote",
@@ -70,7 +71,8 @@
       "correct": [
         0,
         1
-      ]
+      ],
+      "image": "media/deer.jpg"
     },
     {
       "text": "Vad jobbar Louisa med, egentligen?",
@@ -81,7 +83,8 @@
         "Bygger AI-agenter med LangGraph och RAG",
         "Automatiserar testning av mobilappar"
       ],
-      "correct": 2
+      "correct": 2,
+      "image": "media/tall-hat.jpg"
     },
     {
       "type": "photo",
@@ -129,7 +132,8 @@
     },
     {
       "type": "write",
-      "text": "Vad är Louisas bästa egenskap?"
+      "text": "Vad är Louisas bästa egenskap?",
+      "image": "media/laugh.jpg"
     },
     {
       "type": "number",
@@ -142,7 +146,8 @@
     {
       "type": "vote",
       "text": "Vem har bäst outfit ikväll?",
-      "options": "players"
+      "options": "players",
+      "image": "media/night.jpg"
     },
     {
       "type": "dare",
@@ -159,7 +164,8 @@
     {
       "type": "vote",
       "text": "Vem i rummet har mest aura?",
-      "options": "players"
+      "options": "players",
+      "image": "media/cat-ears.jpg"
     },
     {
       "type": "multiple",
@@ -179,7 +185,8 @@
       "max": 90,
       "unit": "minuter",
       "scoring": "closest",
-      "correct": 26
+      "correct": 26,
+      "image": "media/selfie.jpg"
     },
     {
       "type": "dare",
@@ -223,7 +230,8 @@
     },
     {
       "type": "write",
-      "text": "Vilken blir Louisas nästa hobby?"
+      "text": "Vilken blir Louisas nästa hobby?",
+      "image": "media/bamboo.jpg"
     },
     {
       "type": "dare",

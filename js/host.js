@@ -240,7 +240,7 @@
       <section class="question write">
         ${qHead(cq, `<span class="q-double">Anonymous</span><div class="timer" id="wTimer"><div class="ring" id="timerRing" style="--p:1"></div><span id="timeLeft">${cq.writeLimit}</span></div>`)}
         <div class="q-body">
-          <div class="q-visual"><div class="mascot mid bob">${birthdayRat()}</div></div>
+          <div class="q-visual">${mediaHTML(cq, 'medium', false) || `<div class="mascot mid bob">${birthdayRat()}</div>`}</div>
           <div class="answered"><span id="answered">0 / ${playerCount()}</span><small>written</small><div class="q-faces" id="qFaces"></div><button class="btn ghost small" id="btnEndWrite">On to the vote</button></div>
         </div>
         <div class="num-panel"><p class="num-hint write-hint">Write your answer on your phone. <b>Nobody sees who wrote what until the vote is over.</b></p></div>
