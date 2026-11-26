@@ -92,6 +92,49 @@ const server = http.createServer((req, res) => {
     await shot(host, '05-vote-fixed-reveal');
     check(JSON.stringify(await H(() => window.__host.questions[2].correct)) === '[0,2]', 'a tied vote lets both answers win');
     await host.click('#btnNext'); await sleep(2500);
+
+    // Q4: a dare. The room votes for Brie Brie, she accepts on her phone, the host judges it done.
+    await host.click('#btnNext'); await sleep(1000); await shot(host, '05b-dare-intro'); await toQuestion();
+    for (let i = 0; i < 12; i++) if (i !== 2) await P[i].click('.p-vote:has-text("Brie Brie")');
+    await P[2].click('.p-vote:has-text("Jo")');
+    await host.click('#btnSkip'); await toReveal();
+    const brieBefore = (await byName('Brie Brie')).score;
+    await shot(host, '05c-dare-asked'); await shot(P[2], 'p-05c-dare-you'); await shot(P[5], 'p-05c-dare-other');
+    check(await P[2].locator('#dareYes').count() === 1 && await P[5].locator('#dareYes').count() === 0, 'only the chosen rat is asked to accept the dare');
+    await H(() => { SQ.cfg.autoAdvanceSeconds = 1; }); await sleep(2500);
+    check(await H(() => window.__host.phase) === 'reveal', 'the screen waits for the judge instead of moving on');
+    await H(() => { SQ.cfg.autoAdvanceSeconds = 0; });
+    await P[2].click('#dareYes'); await sleep(600);
+    check(await H(() => window.__host.dare.st) === 'accepted', 'accepting on the phone reaches the big screen');
+    await shot(host, '05d-dare-accepted'); await shot(P[2], 'p-05d-dare-go');
+    await host.click('#dareBox [data-st="done"]'); await sleep(700);
+    const brieAfter = (await byName('Brie Brie')).score;
+    check(brieAfter === brieBefore + 1500, `a finished dare gives 1,500 points (${brieBefore} -> ${brieAfter})`);
+    check((await byName('Cheddar Chad')).streak === 3, 'a dare leaves streaks alone');
+    await shot(host, '05e-dare-done'); await shot(P[2], 'p-05e-dare-done'); await shot(P[5], 'p-05e-dare-done-other');
+    await host.click('#btnNext'); await sleep(2500);
+
+    // Q5: anonymous answers. Twelve rats write, then everyone votes; Louisa's answer wins.
+    await host.click('#btnNext'); await sleep(1000); await shot(host, '05f-write-intro');
+    await host.waitForFunction(() => window.__host.phase === 'write', null, { timeout: 15000 }); await sleep(500);
+    await shot(P[1], 'p-05g-write');
+    const TEXTS = ['Hennes skratt', 'Att hon alltid har snacks med sig', 'Tålamodet', 'Hon kan sova var som helst, när som helst, hur som helst', 'Dansen', 'Omtanken', 'Hon minns allas födelsedagar', 'Humorn', 'Envisheten', 'Råttkärleken', 'Modet', 'Att hon lyssnar'];
+    for (let i = 0; i < 12; i++) { await P[i].fill('#pText', TEXTS[i]); await P[i].click('#writeForm button'); }
+    await sleep(400); await shot(host, '05g-write'); await shot(P[1], 'p-05g-written');
+    check(await H(() => Object.keys(window.__host.texts).length) === 12, 'written answers reach the big screen');
+    await host.click('#btnEndWrite'); await toQuestion();
+    await shot(host, '05h-write-vote'); await shot(P[1], 'p-05h-write-vote');
+    const shown = await host.textContent('.write-grid');
+    check(TEXTS.every((t) => shown.includes(t)) && !NAMES.some((n) => shown.includes(n)), 'the answers are on the big screen without names');
+    check(await P[0].locator('.p-text').count() === 11 && await P[14].locator('.p-text').count() === 12, 'a phone lists every answer except its own');
+    const louisaBefore = (await byName('Louisa')).score;
+    for (let i = 1; i <= 8; i++) await P[i].click('.p-text:has-text("Hennes skratt")');
+    await P[0].click('.p-text:has-text("Tålamodet")'); await P[13].click('.p-text:has-text("Tålamodet")');
+    await host.click('#btnSkip'); await toReveal();
+    await shot(host, '05i-write-reveal'); await shot(P[0], 'p-05i-write-won'); await shot(P[2], 'p-05i-write-votes');
+    check((await byName('Louisa')).score === louisaBefore + 1000, 'the writer of the winning answer gets 1,000 points');
+    check((await host.textContent('.write-grid')).includes('Louisa'), 'the writers are named once the vote is over');
+    await host.click('#btnNext'); await sleep(2500);
     await shot(host, '06-leaderboard-before-bets'); await shot(P[3], 'p-06-leaderboard-before-bets');
 
     // Bet your cheese, then the final question.

@@ -103,6 +103,8 @@
       if (type === 'tf' || type === 'true/false') type = 'truefalse';
       if (type === 'slider' || type === 'numeric') type = 'number';
       if (type === 'poll' || type === 'majority') type = 'vote';
+      if (type === 'task' || type === 'challenge') type = 'dare';
+      if (type === 'anonymous' || type === 'open' || type === 'text') type = 'write';
       let options; let correct; let extra = {};
       if (type === 'number') {
         // Players step a counter up and down on their phone; only the exact number counts.
@@ -112,6 +114,12 @@
         options = []; correct = [c]; extra = { min, max, unit: String(q.unit ?? ''), closest: q.scoring === 'closest' };
         if (max <= min) errors.push(`Question ${n}: "max" must be larger than "min".`);
         if (!Number.isInteger(c) || c < min || c > max) errors.push(`Question ${n}: "correct" must be a whole number from ${min} to ${max}.`);
+      } else if (type === 'write') {
+        // Everyone writes an answer; the answers are then shown without names and the room votes for the best one.
+        options = []; correct = []; extra = { writeLimit: Number(q.writeLimit) || 45, voteLimit: Number(q.timeLimit) || 40 };
+      } else if (type === 'dare') {
+        // The room votes for who has to do the task in "text"; that guest accepts or declines, and the host judges.
+        options = []; correct = []; extra = { guests: true, points: Number(q.points) > 0 ? Math.round(Number(q.points)) : 1500 };
       } else if (type === 'vote' && q.options === 'players') {
         // Majority vote among the guests themselves: the options are filled in with whoever is playing when it is asked.
         options = []; correct = []; extra = { guests: true };
@@ -130,7 +138,7 @@
         else if (!correct.length) errors.push(`Question ${n}: "correct" must be an option position from 0 to ${options.length - 1} (or a list of them).`);
       }
       const media = q.media || (q.image ? { image: q.image } : q.video ? { video: q.video } : null);
-      return { text, type, options, correct, media, timeLimit: Number(q.timeLimit) || def, ...extra };
+      return { text, type, options, correct, media, timeLimit: extra.voteLimit || Number(q.timeLimit) || def, ...extra };
     });
     return { title: data.title || 'Squeak & Seek', questions, errors };
   }
@@ -141,6 +149,7 @@
   const streakBonus = (streak) => Math.max(0, Math.min(streak - 1, 3)) * 100;
   // Bet your cheese: the shares of your score you can bet, and what a share is worth. Everyone can stake at least
   // 1,000, so the rats at the bottom have something to play for too.
+  const WRITE_MAX = 60; // longest anonymous answer, in characters
   const BETS = [0, 25, 50, 100];
   const stake = (score, pct) => Math.round(Math.max(Number(score) || 0, 1000) * pct / 100);
   // Stable pick from a list (same seed, same line), so a re-render never changes the text.
@@ -240,5 +249,5 @@
   const ordinal = (n) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
-  window.SQ = { cfg, params, isLocal, escapeHtml, uid, hash, C, GLYPHS, ANSWERS, TF, answerStyle, ratSVG, birthdayRat, playerRat, avatar, isBirthday, normalizeQuestions, pointsFor, streakBonus, BETS, stake, REACTIONS, pickLine, connect, keepAwake, confetti, ordinal, fmt };
+  window.SQ = { cfg, params, isLocal, escapeHtml, uid, hash, C, GLYPHS, ANSWERS, TF, answerStyle, ratSVG, birthdayRat, playerRat, avatar, isBirthday, normalizeQuestions, pointsFor, streakBonus, BETS, stake, WRITE_MAX, REACTIONS, pickLine, connect, keepAwake, confetti, ordinal, fmt };
 })();

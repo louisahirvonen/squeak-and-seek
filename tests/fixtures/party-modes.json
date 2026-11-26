@@ -2,9 +2,48 @@
   "title": "Party modes test",
   "defaultTimeLimit": 20,
   "questions": [
-    { "text": "Warm-up: which one is cheese?", "options": ["Cheddar", "Granite", "Felt", "Tin"], "correct": 0 },
-    { "type": "vote", "text": "Vem har bäst outfit ikväll?", "options": "players" },
-    { "type": "vote", "text": "Bästa pålägget?", "options": ["Ost", "Skinka", "Kaviar", "Inget"] },
-    { "text": "Final: which one is a rat?", "options": ["Hamster", "Rat", "Vole", "Shrew"], "correct": 1 }
+    {
+      "text": "Warm-up: which one is cheese?",
+      "options": [
+        "Cheddar",
+        "Granite",
+        "Felt",
+        "Tin"
+      ],
+      "correct": 0
+    },
+    {
+      "type": "vote",
+      "text": "Vem har bäst outfit ikväll?",
+      "options": "players"
+    },
+    {
+      "type": "vote",
+      "text": "Bästa pålägget?",
+      "options": [
+        "Ost",
+        "Skinka",
+        "Kaviar",
+        "Inget"
+      ]
+    },
+    {
+      "type": "dare",
+      "text": "Vem ska hålla ett hyllningstal till Louisa på 20 sekunder?"
+    },
+    {
+      "type": "write",
+      "text": "Vad är Louisas bästa egenskap?"
+    },
+    {
+      "text": "Final: which one is a rat?",
+      "options": [
+        "Hamster",
+        "Rat",
+        "Vole",
+        "Shrew"
+      ],
+      "correct": 1
+    }
   ]
 }

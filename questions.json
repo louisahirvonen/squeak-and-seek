@@ -107,14 +107,8 @@
       ]
     },
     {
-      "type": "vote",
-      "text": "Vad är Louisas bästa egenskap?",
-      "options": [
-        "Humorn",
-        "Omtanken",
-        "Envisheten",
-        "Att hon kan sova var som helst"
-      ]
+      "type": "write",
+      "text": "Vad är Louisas bästa egenskap?"
     },
     {
       "type": "number",
@@ -154,6 +148,10 @@
       "correct": 3
     },
     {
+      "type": "dare",
+      "text": "Vem ska hålla ett hyllningstal till Louisa på 20 sekunder?"
+    },
+    {
       "type": "multiple",
       "text": "Vad ska man ge Louisa om hon har haft en dålig dag?",
       "options": [
@@ -165,14 +163,8 @@
       "correct": 2
     },
     {
-      "type": "vote",
-      "text": "Vilken blir Louisas nästa hobby?",
-      "options": [
-        "Keramik",
-        "Råttagility",
-        "Vinterbad",
-        "Stand-up"
-      ]
+      "type": "write",
+      "text": "Vilken blir Louisas nästa hobby?"
     },
     {
       "type": "multiple",

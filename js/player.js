@@ -107,7 +107,7 @@
   }
 
   // An answer is only safe once the big screen says it has it. Until then, keep sending it.
-  const arrived = (s) => !s || (s.phase !== 'question' && s.phase !== 'wager') || !s.k || answers[s.k] === undefined || (Array.isArray(s.a) ? s.a.includes(SQ.hash(me.id)) : true);
+  const arrived = (s) => !s || !['question', 'wager', 'write'].includes(s.phase) || !s.k || answers[s.k] === undefined || (Array.isArray(s.a) ? s.a.includes(SQ.hash(me.id)) : true);
   function checkSent() {
     const s = lastState; const ok = arrived(s);
     clearTimeout(resendTimer);
@@ -122,14 +122,14 @@
   // ---------- screens ----------
   function render(fromResults) {
     const s = lastState; if (!s) return;
-    const key = `${s.phase}:${s.q}:${me.name}:${s.phase === 'reveal' || s.phase === 'leaderboard' || s.phase === 'podium' ? (mine ? [mine.phase, mine.q, mine.s, mine.k, mine.c].join('/') : '') : s.phase === 'lobby' && mine ? mine.s : ''}`;
+    const key = `${s.phase}:${s.q}:${me.name}:${s.phase === 'reveal' || s.phase === 'leaderboard' || s.phase === 'podium' ? ((mine ? [mine.phase, mine.q, mine.s, mine.k, mine.c].join('/') : '') + (s.dare ? s.dare.st : '')) : s.phase === 'lobby' && mine ? mine.s : ''}`;
     if (key === shownKey) return;
     shownKey = key;
     clearInterval(countdown); clearTimeout(holdTimer); clearInterval(stepTimer); clearTimeout(stepTimer);
     document.body.dataset.phase = s.phase;
     document.body.dataset.tone = ['pink', 'lime', 'lilac', 'orange', 'sky'][Math.max(0, s.q) % 5];
     delete document.body.dataset.result; delete document.body.dataset.urgent;
-    ({ lobby: pLobby, intro: pIntro, question: pQuestion, reveal: pReveal, leaderboard: pLeaderboard, wager: pWager, podium: pPodium }[s.phase] || pLobby)(s);
+    ({ lobby: pLobby, intro: pIntro, question: pQuestion, reveal: pReveal, leaderboard: pLeaderboard, wager: pWager, write: pWrite, podium: pPodium }[s.phase] || pLobby)(s);
   }
 
   const header = (score = mine ? mine.s : 0) => { shownScore = score; return `<header class="p-head">${avatar(me.id, 'p-avatar')}<span class="p-name">${esc(me.name)}</span>${mine && mine.st >= 2 ? `<span class="p-streak">${mine.st} in a row</span>` : ''}<span class="p-score"><span id="pScore">${fmt(score)}</span> pts</span></header>`; };
@@ -172,7 +172,7 @@
       <section class="p-center">
         <p class="kicker">${s.q + 1 === s.total && s.total > 1 ? 'Final question' : `Question ${pad(s.q + 1)} / ${pad(s.total)}`}</p>
         <h2 class="p-title">${s.dbl ? 'Double points' : s.wg ? 'The bets are in' : s.video ? 'Watch the video' : 'Get ready'}</h2>
-        <p class="p-lede">${s.video ? 'It plays on the big screen. Answers come right after.' : s.type === 'vote' ? 'A vote: the most popular answer wins.' : 'Read the question on the big screen.'}${s.dbl ? ' This one counts twice.' : s.wg ? ' Your bet rides on this one.' : ''}</p>
+        <p class="p-lede">${s.video ? 'It plays on the big screen. Answers come right after.' : s.type === 'write' ? 'You write your own answer for this one. Nobody sees who wrote what.' : s.type === 'dare' ? 'A dare. Vote for who has to do it.' : s.type === 'vote' ? 'A vote: the most popular answer wins.' : 'Read the question on the big screen.'}${s.dbl ? ' This one counts twice.' : s.wg ? ' Your bet rides on this one.' : ''}</p>
       </section>`;
   }
 
@@ -230,11 +230,23 @@
       $('#pLock').addEventListener('click', () => lockIn(value));
       return startBar();
     }
-    if (s.type === 'vote' && s.opts && s.opts[0] && s.opts[0].pid) {
+    if (s.type === 'write') {
+      // Vote for the best of the written answers (your own is left out).
+      const mineH = SQ.hash(me.id); const list = (s.opts || []).map((o, i) => (o.h === mineH ? '' : `<button class="p-text" data-i="${i}">${esc(o.label)}</button>`)).join('');
+      screen.innerHTML = `${header()}${timerRow}
+        <section class="p-votes">
+          <p class="kicker">Vote for the best answer</p>
+          <div class="p-text-list">${list || '<p class="p-lede">No other answers to vote for.</p>'}</div>
+        </section>`;
+      startBar();
+      screen.querySelectorAll('.p-text').forEach((b) => b.addEventListener('click', () => lockIn(Number(b.dataset.i))));
+      return;
+    }
+    if (s.opts && s.opts[0] && s.opts[0].pid) {
       // Vote for a guest (not yourself). The answer with the most votes wins.
       screen.innerHTML = `${header()}${timerRow}
         <section class="p-votes">
-          <p class="kicker">Majority wins. Vote for a rat.</p>
+          <p class="kicker">${s.type === 'dare' ? 'Who has to do it? Vote.' : 'Majority wins. Vote for a rat.'}</p>
           <div class="p-vote-list">${s.opts.map((o, i) => (o.pid === me.id ? '' : `<button class="p-vote" data-i="${i}">${SQ.avatar(o.pid, '', !!o.bd)}<span>${esc(o.label)}</span></button>`)).join('')}</div>
         </section>`;
       startBar();
@@ -259,11 +271,21 @@
   // Sent again by checkSent() until the big screen confirms it.
   function send(s, choice) {
     if (!link) return;
-    (s.phase === 'wager' ? link.send('bet', { id: me.id, pct: choice }) : link.send('answer', { id: me.id, q: s.q, choice })).catch(() => {});
+    (s.phase === 'write' ? link.send('text', { id: me.id, t: choice }) : s.phase === 'wager' ? link.send('bet', { id: me.id, pct: choice }) : link.send('answer', { id: me.id, q: s.q, choice })).catch(() => {});
   }
 
   function pLocked(s, picked) {
-    const guest = s.type === 'vote' && s.opts && s.opts[picked] && s.opts[picked].pid ? s.opts[picked] : null;
+    if (s.type === 'write') {
+      screen.innerHTML = `${header()}
+        <section class="p-center">
+          <p class="kicker">Your vote</p>
+          <h2 class="p-title p-quote">${esc(s.opts && s.opts[picked] ? s.opts[picked].label : '')}</h2>
+          <p class="p-lede">Watch the big screen.</p>
+          <p class="p-sent" id="pSent" hidden>Sending your vote&hellip;</p>
+        </section>`;
+      return;
+    }
+    const guest = s.opts && s.opts[picked] && s.opts[picked].pid ? s.opts[picked] : null;
     if (guest) {
       screen.innerHTML = `${header()}
         <section class="p-center">
@@ -294,6 +316,7 @@
     const waiting = () => { screen.innerHTML = `${header(before)}<section class="p-center"><div class="loader"><span></span><span></span><span></span></div><p class="p-lede">Checking answers&hellip;</p></section>`; };
     if (!r) return waiting();
     const show = () => {
+      if (s.type === 'dare') return pDare(s, r);
       const last = s.q + 1 >= s.total;
       let cls = 'none', kicker = 'Out of time', title = 'Too slow', sub = 'No answer this time.';
       if (r.nw) { kicker = 'You\'re in'; title = 'Welcome'; sub = last ? 'Just in time for the results.' : 'The next question is yours.'; }
@@ -304,6 +327,11 @@
       if (s.type === 'vote') {
         if (r.c === true) { kicker = 'With the majority'; sub = r.b ? sub : 'You and the room agree.'; }
         else if (r.c === false) { cls = 'none'; kicker = 'Outvoted'; title = 'Hmm.'; sub = 'The room saw it differently. Your streak is safe.'; }
+      }
+      if (s.type === 'write') {
+        if (r.c === true) { cls = 'right'; kicker = 'The room\'s favourite'; title = `+${fmt(r.p)}`; sub = 'Your answer won the vote.'; }
+        else if (r.v !== undefined) { cls = 'none'; kicker = 'Your answer got'; title = `${r.v} vote${r.v === 1 ? '' : 's'}`; sub = 'Another answer won this time.'; }
+        else { cls = 'none'; kicker = 'No answer from you'; title = 'Hmm.'; sub = 'Write one next time.'; }
       }
       const unitTxt = s.unit ? ' ' + esc(s.unit) : '';
       if (s.cl && r.c === true && r.off > 0) { kicker = 'Closest guess in the room'; sub = `Only ${r.off} off. The answer was ${s.correct[0]}${unitTxt}.`; }
@@ -322,12 +350,44 @@
           ${extra.length ? `<p class="p-extra">${extra.join('<br>')}</p>` : ''}
         </section>`;
       countScore(r.s);
-      if (cls === 'right') buzz(r.b ? [40, 60, 40, 60, 80] : [40, 60, 40]); else if (cls === 'wrong') buzz(120); else if (cls === 'near') buzz(40);
+      if (s.type === 'write') { /* no buzz pattern for a matter of taste */ } else if (cls === 'right') buzz(r.b ? [40, 60, 40, 60, 80] : [40, 60, 40]); else if (cls === 'wrong') buzz(120); else if (cls === 'near') buzz(40);
     };
     // The big screen builds a moment of suspense first; hold the phone back for the same time.
     const key = `${s.k || s.q}`;
     if (partied === 'rv' + key || !s.wait) return show();
     partied = 'rv' + key; waiting(); holdTimer = setTimeout(show, s.wait);
+  }
+
+  // Dare: the chosen rat accepts or declines here; everyone else follows along.
+  function pDare(s, r) {
+    const d = s.dare; const me1 = d && d.h === SQ.hash(me.id); const pts = d ? fmt(d.pts) : '';
+    let kicker = 'The dare', title = 'Nobody', sub = 'Nobody voted, so nobody has to.', cls = 'none', btns = '';
+    if (d && me1) {
+      ({ asked: () => { kicker = 'The room has chosen'; title = 'It\'s you'; sub = `Do the dare on the big screen for ${pts} points. ${esc(NAME)} is the judge.`; btns = '<div class="p-dare-btns"><button class="btn primary big" id="dareYes">I\'ll do it</button><button class="btn ghost" id="dareNo">No thanks</button></div>'; },
+        accepted: () => { kicker = 'Dare accepted'; title = 'Go!'; sub = `${esc(NAME)} is watching.`; },
+        done: () => { cls = 'right'; kicker = 'Dare done'; title = `+${pts}`; sub = 'Worth it.'; },
+        failed: () => { cls = 'wrong'; kicker = 'The judge has spoken'; title = 'Not quite'; sub = 'No points, but full marks for trying.'; },
+        declined: () => { kicker = 'Dare declined'; title = 'Passed'; sub = 'No points lost.'; } }[d.st] || (() => {}))();
+    } else if (d) {
+      title = esc(d.n);
+      ({ asked: () => { kicker = 'The dare goes to'; sub = 'Will they do it?'; }, accepted: () => { kicker = 'Dare accepted by'; sub = 'Eyes on them.'; },
+        done: () => { kicker = 'Dare done by'; sub = `+${pts} points.`; }, failed: () => { kicker = 'So close'; sub = 'The judge said no.'; },
+        declined: () => { kicker = 'No thanks, said'; sub = 'The dare goes undone.'; } }[d.st] || (() => {}))();
+    }
+    document.body.dataset.result = cls;
+    screen.innerHTML = `${header(shownScore)}
+      <section class="p-center p-result ${cls}">
+        <p class="kicker">${kicker}</p>
+        <h2 class="p-title ${title.length > 9 ? '' : 'huge'} p-pop">${title}</h2>
+        <p class="p-lede">${sub}</p>
+        ${btns}
+        ${r ? `<div class="p-rank"><span>${ordinal(r.k)}</span><small>place right now</small></div>` : ''}
+      </section>`;
+    if (r) countScore(r.s);
+    const answer = (ok) => { buzz(30); if (link) link.send('dare', { id: me.id, ok }).catch(() => {}); screen.querySelectorAll('.p-dare-btns button').forEach((b) => { b.disabled = true; }); };
+    $('#dareYes')?.addEventListener('click', () => answer(true)); $('#dareNo')?.addEventListener('click', () => answer(false));
+    if (me1 && d.st === 'asked') buzz([60, 60, 60, 60, 120]);
+    if (me1 && d.st === 'done') SQ.confetti(2500);
   }
 
   function pLeaderboard(s) {
@@ -340,6 +400,43 @@
         ${extra.length ? `<p class="p-extra">${extra.join('<br>')}</p>` : ''}
         ${s.fin ? '<p class="p-fin">Last question next. Double points.</p>' : s.wgn ? '<p class="p-fin">One question left. First: bet your cheese.</p>' : ''}
       </section>`;
+  }
+
+  // Anonymous answers, step one: type an answer. It shows on the big screen without your name.
+  function pWrite(s) {
+    const key = s.k; const sent = answers[key]; const max = s.max || 60;
+    if (sent !== undefined) {
+      screen.innerHTML = `${header()}
+        <section class="p-center">
+          <p class="kicker">Answer sent</p>
+          <h2 class="p-title p-quote">${esc(sent)}</h2>
+          <p class="p-lede">Nobody knows it is yours. The vote comes next.</p>
+          <p class="p-sent" id="pSent" hidden>Sending your answer&hellip;</p>
+        </section>`;
+      return;
+    }
+    screen.innerHTML = `${header()}
+      <section class="p-write">
+        <p class="kicker">Your answer, anonymous</p>
+        <form id="writeForm" autocomplete="off">
+          <textarea id="pText" maxlength="${max}" rows="3" placeholder="Write here" enterkeyhint="send"></textarea>
+          <p class="p-hint"><span id="pLeft">${max}</span> characters left &middot; <span id="pWSecs"></span></p>
+          <button class="btn primary big" type="submit">Send &rarr;</button>
+        </form>
+      </section>`;
+    const box = $('#pText'); const ends = Date.now() + (s.endsIn || 0);
+    const tick = () => { const left = Math.ceil(Math.max(0, ends - Date.now()) / 1000); const el = $('#pWSecs'); if (el) el.textContent = left ? `${left} s` : 'time is up'; if (!left) clearInterval(countdown); };
+    tick(); countdown = setInterval(tick, 250);
+    box.addEventListener('input', () => { $('#pLeft').textContent = max - box.value.length; });
+    const submit = (e) => {
+      if (e) e.preventDefault();
+      const t = box.value.replace(/\s+/g, ' ').trim(); if (!t) return box.focus();
+      answers[key] = t; try { sessionStorage.setItem('squeak-answers', JSON.stringify(answers)); } catch (err) { /* private mode */ }
+      buzz(30); send(s, t); shownKey = ''; render(false); checkSent();
+    };
+    $('#writeForm').addEventListener('submit', submit);
+    box.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(e); });
+    box.focus();
   }
 
   // Bet your cheese: before the final question, stake part of your score on getting it right.

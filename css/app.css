@@ -38,7 +38,7 @@ body[data-phase="intro"][data-tone="lime"] { --bg: var(--lime); }
 body[data-phase="intro"][data-tone="lilac"] { --bg: var(--lilac); }
 body[data-phase="intro"][data-tone="orange"] { --bg: var(--orange); }
 body[data-phase="intro"][data-tone="sky"] { --bg: var(--sky); }
-body[data-phase="question"], body[data-phase="reveal"] { --bg: var(--ink); --fg: var(--paper); --soft: rgba(244,241,234,.12); }
+body[data-phase="question"], body[data-phase="reveal"], body[data-phase="write"] { --bg: var(--ink); --fg: var(--paper); --soft: rgba(244,241,234,.12); }
 body[data-phase="leaderboard"] { --bg: var(--lime); --fg: var(--ink); --soft: rgba(11,11,15,.12); --btn-bg: var(--ink); --btn-fg: var(--lime); --d1: var(--ink); --d2: var(--pink); --d3: rgba(11,11,15,.12); --d4: var(--blue); }
 body[data-phase="podium"] { --bg: var(--pink); --fg: var(--ink); --soft: rgba(11,11,15,.12); --btn-bg: var(--ink); --btn-fg: var(--pink); --d1: var(--lime); --d2: var(--ink); --d3: rgba(11,11,15,.14); --d4: var(--paper); }
 body.player[data-result="right"] { --bg: var(--lime); --fg: var(--ink); --soft: rgba(11,11,15,.12); }
@@ -587,7 +587,7 @@ body.player[data-result="near"] { --bg: var(--sky); --fg: var(--ink); --soft: rg
 }
 /* phones: no text selection, no long-press menu on a photo, no pull-to-refresh, no double-tap zoom */
 body.player { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; touch-action: manipulation; }
-body.player input { -webkit-user-select: text; user-select: text; }
+body.player input, body.player textarea { -webkit-user-select: text; user-select: text; }
 .p-answer img { pointer-events: none; -webkit-user-drag: none; }
 .p-sent { margin: 8px 0 0; font-weight: 700; font-size: .95rem; opacity: .8; }
 /* a phone held sideways: all the answers in one row, so none falls below the screen */
@@ -696,3 +696,49 @@ body.player[data-phase="reveal"] .screen, body.player[data-phase="leaderboard"] 
 .p-react b { font-family: var(--display); font-variation-settings: 'wdth' 80; font-weight: 800; font-size: 1rem; letter-spacing: -.01em; white-space: nowrap; }
 .p-react button:first-child { color: var(--pink); }
 .p-react-go { animation: bump .25s ease-out; }
+
+/* ---------- dare ---------- */
+.dare-box { display: flex; flex-direction: column; gap: 10px; padding: 12px 16px 14px 12px; border-radius: 28px; background: var(--soft); max-width: 34vw; }
+.dare-who { display: flex; align-items: center; gap: 14px; }
+.dare-who .avatar { width: clamp(48px, 8vh, 84px); flex: none; }
+.dare-who div { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+.dare-who small { font-weight: 700; text-transform: uppercase; letter-spacing: .14em; font-size: .7rem; opacity: .75; }
+.dare-who strong { font-family: var(--display); font-variation-settings: 'wdth' 85; font-weight: 800; font-size: clamp(1.4rem, 2.4vw, 2.4rem); letter-spacing: -.02em; color: var(--lime); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dare-who span { font-size: 1rem; font-weight: 700; opacity: .85; }
+.dare-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.dare-box.dare-done { background: var(--lime); color: var(--ink); }
+.dare-box.dare-done strong { color: var(--ink); }
+.dare-box.dare-failed strong, .dare-box.dare-declined strong { color: var(--coral); }
+.p-dare-btns { display: flex; flex-direction: column; gap: 10px; align-self: stretch; margin: 6px 0; }
+.p-dare-btns .btn { width: 100%; }
+
+/* ---------- anonymous answers ---------- */
+.write-hint { max-width: none; font-size: clamp(1.3rem, 2.4vw, 2.4rem); }
+.write-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.2vh 1vw; }
+.write-grid.few { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.write-opt { position: relative; overflow: hidden; display: flex; align-items: center; gap: 1vw; padding: 1.3vh 1.2vw; border-radius: 20px; background: var(--paper); color: var(--ink); min-width: 0; min-height: 6.4vh; animation: rise .4s ease-out both; }
+.write-opt .label { flex: 1; min-width: 0; font-weight: 700; font-size: clamp(1rem, 1.55vw, 1.6rem); line-height: 1.1; overflow-wrap: anywhere; position: relative; z-index: 1; }
+.write-grid.many .label { font-size: clamp(.9rem, 1.25vw, 1.25rem); }
+.write-grid.many .write-opt { min-height: 5vh; padding: .9vh 1vw; }
+.write-opt .count { margin-left: 0; font-size: clamp(1.3rem, 2.2vw, 2.2rem); position: relative; z-index: 1; }
+.write-by { display: inline-flex; align-items: center; gap: 6px; flex: none; max-width: 40%; font-size: clamp(.75rem, 1vw, 1rem); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px 3px 3px; border-radius: 99px; background: rgba(11,11,15,.1); position: relative; z-index: 1; }
+.write-by .avatar { width: clamp(20px, 3vh, 30px); flex: none; }
+.reveal .write-opt { animation: none; }
+.reveal .write-opt.other { animation: writeDim .5s .9s ease-out forwards; }
+.reveal .write-opt.correct { animation: writeWin .4s .9s ease-out forwards; }
+@keyframes writeDim { to { opacity: .55; } }
+@keyframes writeWin { to { background: var(--lime); box-shadow: 0 0 0 4px var(--paper); } }
+@media (prefers-reduced-motion: reduce) { .reveal .write-opt.correct { background: var(--lime); } .reveal .write-opt.other { opacity: .55; } }
+/* with many answers on screen the rat steps aside */
+.question.write.voting .q-visual .mascot, .question.write.reveal .q-visual .mascot { display: none; }
+.question.write.voting .q-body, .question.write.reveal .q-body { min-height: 0; flex: 0 1 auto; }
+/* phone */
+.p-write { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 14px 20px 20px; }
+.p-write form { display: flex; flex-direction: column; gap: 10px; }
+.p-write textarea { font: inherit; font-weight: 700; font-size: 1.35rem; line-height: 1.2; padding: 14px 16px; border-radius: 18px; border: 2px solid rgba(244,241,234,.25); background: rgba(244,241,234,.08); color: inherit; resize: none; outline: none; }
+.p-write textarea:focus { border-color: var(--lime); }
+.p-write .btn { width: 100%; }
+.p-text-list { display: flex; flex-direction: column; gap: 8px; }
+.p-text { border: 0; border-radius: 18px; background: var(--paper); color: var(--ink); padding: 13px 16px; min-height: 50px; font: inherit; font-weight: 700; font-size: 1.05rem; line-height: 1.15; text-align: left; cursor: pointer; overflow-wrap: anywhere; transition: transform .1s; }
+.p-text:active { transform: scale(.97); }
+.p-title.p-quote { font-size: 2rem; line-height: 1.05; }
