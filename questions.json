@@ -49,6 +49,11 @@
       "correct": 3
     },
     {
+      "type": "vote",
+      "text": "Vem skulle överleva längst i en zombieapokalyps?",
+      "options": "players"
+    },
+    {
       "type": "multiple",
       "text": "Vad ser Louisa mest fram emot i livet?",
       "options": [
@@ -102,6 +107,16 @@
       ]
     },
     {
+      "type": "vote",
+      "text": "Vad är Louisas bästa egenskap?",
+      "options": [
+        "Humorn",
+        "Omtanken",
+        "Envisheten",
+        "Att hon kan sova var som helst"
+      ]
+    },
+    {
       "type": "number",
       "text": "Hur länge har Louisa och Mattias varit ihop?",
       "min": 0,
@@ -121,6 +136,11 @@
       "media": {
         "image": "media/mello.jpg"
       }
+    },
+    {
+      "type": "vote",
+      "text": "Vem i rummet har mest aura?",
+      "options": "players"
     },
     {
       "type": "multiple",
@@ -145,6 +165,16 @@
       "correct": 2
     },
     {
+      "type": "vote",
+      "text": "Vilken blir Louisas nästa hobby?",
+      "options": [
+        "Keramik",
+        "Råttagility",
+        "Vinterbad",
+        "Stand-up"
+      ]
+    },
+    {
       "type": "multiple",
       "text": "Vad heter dokumentären som har gjorts om byn Louisa växte upp i?",
       "timeLimit": 30,
@@ -167,6 +197,11 @@
       "unit": "timmar",
       "scoring": "closest",
       "correct": 16
+    },
+    {
+      "type": "vote",
+      "text": "Vem kommer lägga sig tidigast inatt?",
+      "options": "players"
     },
     {
       "type": "multiple",
