@@ -31,9 +31,9 @@
   const avatar = (id, cls = '') => SQ.avatar(id, cls, !!S.players[id]?.bday);
   // "Bet your cheese": before the final question everyone bets part of their score on getting it right.
   // When it is on, it takes the place of the double-points final.
-  const wagerOn = () => SQ.cfg.wagerFinal === true && total() >= 3;
-  const isBetQ = (qi = S.qi) => wagerOn() && qi === total() - 1;
-  const isDouble = (qi = S.qi) => SQ.cfg.doubleFinal !== false && !wagerOn() && total() >= 3 && qi === total() - 1;
+  const wagerOn = () => SQ.cfg.wagerFinal === true && realTotal() >= 3;
+  const isBetQ = (qi = S.qi) => wagerOn() && qi === finalIdx();
+  const isDouble = (qi = S.qi) => SQ.cfg.doubleFinal !== false && !wagerOn() && realTotal() >= 3 && qi === finalIdx();
 
   // ---------- persistence ----------
   const persist = () => localStorage.setItem(STORE, JSON.stringify({ code: S.code, players: S.players, done: S.done, game: S.game, kicked: S.kicked, savedAt: Date.now() }));
@@ -42,6 +42,11 @@
   // ---------- helpers ----------
   const q = () => S.questions[S.qi];
   const total = () => S.questions.length;
+  // Dares are surprise events: they sit in the list but are not counted or numbered as questions.
+  const isQ = (x) => x.type !== 'dare';
+  const realTotal = () => S.questions.filter(isQ).length;
+  const realNo = (qi = S.qi) => S.questions.slice(0, qi + 1).filter(isQ).length;
+  const finalIdx = () => S.questions.map(isQ).lastIndexOf(true);
   const ranked = () => Object.entries(S.players).map(([id, p]) => ({ id, ...p }))
     .sort((a, b) => b.score - a.score || (a.reachedAt || 0) - (b.reachedAt || 0) || a.joinedAt - b.joinedAt);
   const playerCount = () => Object.keys(S.players).length;
@@ -72,7 +77,7 @@
 
   function statePayload() {
     const cq = q();
-    const p = { phase: S.phase, code: S.code, title: S.title, q: S.qi, total: total(), seq: ++S.seq, players: playerCount(), g: S.game };
+    const p = { phase: S.phase, code: S.code, title: S.title, q: S.qi, total: total(), no: realNo(), of: realTotal(), seq: ++S.seq, players: playerCount(), g: S.game };
     if (S.phase === 'leaderboard' && isDouble(S.qi + 1)) p.fin = true; // the next question is the final, double one
     if (S.phase === 'leaderboard' && isBetQ(S.qi + 1)) p.wgn = 1; // the betting round comes next
     if (S.phase === 'write') { p.type = 'write'; p.k = `${S.qKey}.w`; p.limit = q().writeLimit; p.max = SQ.WRITE_MAX; p.endsIn = Math.max(0, S.endsAt - performance.now()); p.a = Object.keys(S.texts).map(SQ.hash); }
@@ -91,7 +96,7 @@
         p.a = Object.keys(S.answers).map(SQ.hash); // whose answers have arrived: a phone resends until it sees itself here
       }
       if (S.phase === 'reveal') p.correct = cq.correct;
-      if (S.phase === 'reveal' && cq.type === 'dare' && S.dare) p.dare = { n: S.dare.name, h: SQ.hash(S.dare.id), st: S.dare.st, pts: cq.points };
+      if (S.phase === 'reveal' && cq.type === 'dare' && S.dare) p.dare = S.dare.st === 'spin' ? { st: 'spin', pts: cq.points } : { n: S.dare.name, h: SQ.hash(S.dare.id), st: S.dare.st, pts: cq.points }; // no name while the wheel turns
     }
     return p;
   }
@@ -244,12 +249,80 @@
   }
 
   // ---------- dare ----------
-  // The chosen rat answers on their phone; the host (the judge) says whether the task was done. The host's buttons
-  // also work without the phone's answer, in case that phone is asleep.
+  // A surprise event between questions. A wheel of fortune picks a rat for the task; they answer on their phone and
+  // the host (the judge) says whether it was done. The host's buttons also work without the phone's answer.
   const DARE_OVER = ['done', 'failed', 'declined'];
+  const SPIN_MS = 6200;
+  const WHEEL_COLORS = [SQ.C.lime, SQ.C.pink, SQ.C.sky, SQ.C.orange, SQ.C.lilac, SQ.C.mint];
+  // Who is on the wheel: everyone who is here, except the birthday rat (she is the judge).
+  function dareCandidates() {
+    const here = Object.entries(S.players).filter(([, p]) => !away(p)).sort((x, y) => x[1].joinedAt - y[1].joinedAt);
+    const guests = here.filter(([, p]) => !p.bday);
+    return (guests.length ? guests : here).map(([id, p]) => ({ id, ...p }));
+  }
+  // The wheel looks fair, but it leans a little: the rat in last place is twice as likely as the leader, with
+  // everyone else in between, and someone who already had a dare is much less likely to get another.
+  function pickDare(list = dareCandidates()) {
+    if (!list.length) return null;
+    const scores = list.map((p) => p.score); const hi = Math.max(...scores); const lo = Math.min(...scores);
+    const weights = list.map((p) => (1 + (hi > lo ? (hi - p.score) / (hi - lo) : 0)) * Math.pow(0.25, p.dares || 0));
+    let r = Math.random() * weights.reduce((x, y) => x + y, 0);
+    for (let i = 0; i < list.length; i++) { r -= weights[i]; if (r <= 0) return i; }
+    return list.length - 1;
+  }
+  function startDare() {
+    S.answers = {}; S.counts = []; S.fastest = null; S.wagers = {}; S.extra = {}; S.votesFor = {}; ending = false;
+    S.prevScores = Object.fromEntries(Object.entries(S.players).map(([id, p]) => [id, p.score]));
+    S.prevRanks = Object.fromEntries(ranked().map((p, i) => [p.id, i]));
+    S.moves = Object.values(S.prevScores).some((v) => v > 0);
+    const list = dareCandidates(); const k = pickDare(list);
+    S.dare = k === null ? null : { id: list[k].id, name: list[k].name, st: 'spin', k, list: list.map((p) => ({ id: p.id, name: p.name })) };
+    S.done = S.qi + 1; persist();
+    A.stopMusic();
+    go('reveal');
+    if (!S.dare) return;
+    // Clicks that slow down with the wheel, then the verdict on who it is.
+    for (let j = 0; j < 34; j++) later(() => A.sfx.tick(1 + (j % 2)), Math.round(SPIN_MS * Math.pow(j / 34, 2.2)));
+    later(() => {
+      S.dare.st = 'asked'; if (S.players[S.dare.id]) { S.players[S.dare.id].dares = (S.players[S.dare.id].dares || 0) + 1; persist(); }
+      A.sfx.chime(); $('#wheelWrap')?.classList.add('landed');
+      paintDare(); broadcastAll();
+    }, SPIN_MS + 250);
+  }
+  function wheelSVG(list) {
+    const n = list.length; const a = 360 / n; const R = 190; const C = 200;
+    const pt = (deg, r = R) => { const t = (deg - 90) * Math.PI / 180; return `${(C + r * Math.cos(t)).toFixed(1)} ${(C + r * Math.sin(t)).toFixed(1)}`; };
+    const size = n <= 6 ? 24 : n <= 10 ? 19 : n <= 16 ? 15 : 11;
+    const short = (name) => (name.length > 13 ? name.slice(0, 12) + '…' : name);
+    return `<svg viewBox="0 0 400 400" aria-hidden="true">${list.map((p, i) => {
+      const col = n > 1 && i === n - 1 && i % WHEEL_COLORS.length === 0 ? SQ.C.paper : WHEEL_COLORS[i % WHEEL_COLORS.length];
+      const wedge = n === 1 ? `<circle cx="${C}" cy="${C}" r="${R}" fill="${col}"/>` : `<path d="M${C} ${C} L${pt(i * a)} A${R} ${R} 0 0 1 ${pt((i + 1) * a)} Z" fill="${col}" stroke="${SQ.C.ink}" stroke-width="2"/>`;
+      return `${wedge}<text x="${C + 178}" y="${C}" text-anchor="end" dominant-baseline="central" font-size="${size}" transform="rotate(${(i + 0.5) * a - 90} ${C} ${C})">${esc(short(p.name))}</text>`;
+    }).join('')}<circle cx="${C}" cy="${C}" r="26" fill="${SQ.C.ink}"/><circle cx="${C}" cy="${C}" r="9" fill="${SQ.C.paper}"/></svg>`;
+  }
+  function renderDare() {
+    const cq = q(); const d = S.dare;
+    stage.innerHTML = `
+      <section class="question reveal dare">
+        ${qHead(cq, `<span class="q-double">${fmt(cq.points)} points</span>`)}
+        <div class="dare-stage">
+          ${d ? `<div class="wheel-wrap ${d.st === 'spin' ? '' : 'landed'}" id="wheelWrap"><div class="wheel-pin"></div><div class="wheel" id="wheel">${wheelSVG(d.list)}</div></div>` : '<p class="num-hint write-hint">Nobody is here to take the dare.</p>'}
+          <div class="rv-side">${d ? '<div id="dareBox"></div>' : ''}<button class="btn primary big" id="btnNext">${S.qi + 1 >= total() ? 'Final results &rarr;' : 'Leaderboard &rarr;'}</button></div>
+        </div>
+      </section>`;
+    $('#btnNext').addEventListener('click', next);
+    if (!d) return autoNext();
+    // The chosen name ends under the pin at the top, after six full turns (or at once, on a re-render).
+    const wheel = $('#wheel'); const a = 360 / d.list.length;
+    const end = 360 * 6 - (d.k + 0.5) * a + (SQ.hash(d.id + S.qKey) % 100 / 100 - 0.5) * a * 0.6;
+    if (d.st === 'spin') { void wheel.offsetWidth; wheel.style.transition = `transform ${SPIN_MS}ms cubic-bezier(.12,.62,.08,1)`; }
+    wheel.style.transform = `rotate(${end}deg)`;
+    paintDare();
+    if (DARE_OVER.includes(d.st)) autoNext();
+  }
   function onDare({ id, ok }) { if (S.phase === 'reveal' && S.dare && S.dare.id === id && S.dare.st === 'asked') setDare(ok ? 'accepted' : 'declined'); }
   function setDare(st) {
-    const d = S.dare; const cq = q(); if (!d || S.phase !== 'reveal' || DARE_OVER.includes(d.st)) return;
+    const d = S.dare; const cq = q(); if (!d || S.phase !== 'reveal' || d.st === 'spin' || DARE_OVER.includes(d.st)) return;
     d.st = st;
     if (st === 'done' && S.players[d.id]) { S.players[d.id].score += cq.points; S.players[d.id].reachedAt = Date.now(); persist(); SQ.confetti(2600); A.sfx.fanfare(); }
     else if (st === 'accepted') A.sfx.chime(); else A.sfx.womp();
@@ -259,8 +332,9 @@
   function paintDare() {
     const box = $('#dareBox'); const d = S.dare; if (!box || !d) return;
     const pts = fmt(q().points);
+    if (d.st === 'spin') { box.className = 'dare-box dare-spin'; box.innerHTML = '<div class="dare-who"><div><small>The wheel decides</small><strong>Who will it be?</strong><span>Anyone could get it.</span></div></div>'; return; }
     const line = { asked: 'Waiting for the answer on their phone&hellip;', accepted: `Accepted. ${esc(NAME)} is the judge.`, done: `Done. +${pts} points.`, failed: 'Not quite. No points.', declined: 'Said no thanks.' }[d.st];
-    box.className = `dare-box rv-late dare-${d.st}`;
+    box.className = `dare-box pop-in dare-${d.st}`;
     box.innerHTML = `<div class="dare-who">${avatar(d.id)}<div><small>The dare goes to</small><strong>${esc(d.name)}</strong><span>${line}</span></div></div>
       ${DARE_OVER.includes(d.st) ? '' : `<div class="dare-btns"><button class="btn primary small" data-st="done">Done &middot; +${pts}</button><button class="btn ghost small" data-st="failed">Failed</button><button class="btn ghost small" data-st="declined">Declined</button></div>`}`;
     box.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', () => setDare(b.dataset.st)));
@@ -393,8 +467,9 @@
       v.play().catch(() => { v.muted = true; v.play().catch(() => setTimeout(done, 1500)); });
     } else {
       A.stopMusic();
-      introTimer = setTimeout(cq.type === 'write' ? startWrite : startQuestion, INTRO_MS);
-      [3, 2, 1].forEach((n) => later(() => A.sfx.blip(3 - n), INTRO_MS - n * 1000));
+      introTimer = setTimeout(cq.type === 'write' ? startWrite : cq.type === 'dare' ? startDare : startQuestion, INTRO_MS + (cq.type === 'dare' ? 1500 : 0));
+      if (cq.type !== 'dare') [3, 2, 1].forEach((n) => later(() => A.sfx.blip(3 - n), INTRO_MS - n * 1000));
+      else later(() => A.sfx.fanfare(), 250);
       if (isDouble()) later(() => A.sfx.fanfare(), 250);
     }
   }
@@ -465,21 +540,13 @@
       cq.options.forEach((o, i) => { S.votesFor[o.pid] = tally[i]; });
       cq.correct.forEach((i) => { const p = S.players[cq.options[i].pid]; if (p) { p.score += 1000; p.reachedAt = Date.now(); S.extra[cq.options[i].pid] = 1000; } });
     }
-    // Dare: the rat with the most votes gets the task (a tie is settled by chance). Voting gives no points.
-    if (cq.type === 'dare') {
-      const tally = {}; Object.values(S.answers).forEach((a) => { tally[a.choice] = (tally[a.choice] || 0) + 1; a.vote = 1; a.correct = false; a.base = 0; });
-      const top = Math.max(0, ...Object.values(tally)); const tied = Object.keys(tally).filter((k) => tally[k] === top).map(Number);
-      const pick = tied[Math.floor(Math.random() * tied.length)]; const o = pick === undefined ? null : cq.options[pick];
-      cq.correct = o ? [pick] : [];
-      S.dare = o && S.players[o.pid] ? { id: o.pid, name: o.label, st: 'asked', votes: top } : null;
-    }
     Object.entries(S.players).forEach(([id, p]) => {
       const a = S.answers[id];
       p.idle = a ? 0 : (p.idle || 0) + 1;
       if (a) S.counts[a.choice] = (S.counts[a.choice] || 0) + 1;
       // Close but not closest: points, and the streak is neither broken nor extended.
       if (a && !a.correct && cq.closest && a.base > 0) { a.points = a.base * mult; p.score += a.points; p.reachedAt = a.at; return; }
-      if (cq.type === 'dare' || cq.type === 'write') return; // a dare or a vote for the best answer touches nobody's streak
+      if (cq.type === 'write') return; // a vote for the best answer touches nobody's streak
       if (a && a.vote && !a.correct) return; // outvoted: no points, but a streak is not broken by a matter of taste
       if (!a || !a.correct) { p.streak = 0; return; }
       p.streak = (p.streak || 0) + 1; p.best = Math.max(p.best || 0, p.streak); p.right = (p.right || 0) + 1;
@@ -500,7 +567,7 @@
     });
     if (S.moves) ranked().forEach((p, i) => { const up = S.prevRanks[p.id] - i; const pl = S.players[p.id]; if (up > (pl.climb || 0)) pl.climb = up; });
     S.done = S.qi + 1; persist();
-    const right = cq.type === 'dare' || cq.type === 'write' ? playerCount() : Object.values(S.answers).filter((a) => a.correct).length;
+    const right = cq.type === 'write' ? playerCount() : Object.values(S.answers).filter((a) => a.correct).length;
     go('reveal');
     A.sfx.roll(REVEAL_MS / 1000 - 0.05);
     later(() => { if (right >= Math.max(1, playerCount() / 2)) A.sfx.chime(); else A.sfx.womp(); }, REVEAL_MS);
@@ -520,7 +587,7 @@
   function autoNext() {
     const btn = $('#btnNext'); let left = Math.round(Number(SQ.cfg.autoAdvanceSeconds ?? 20));
     if (!btn || !(left > 0)) return;
-    const phase = S.phase; let paused = !answeredCount(); // nobody played this one: wait for the host instead of running on alone
+    const phase = S.phase; let paused = !answeredCount() && q().type !== 'dare'; // nobody played this one: wait for the host instead of running on alone
     const hold = document.createElement('button'); hold.className = 'btn ghost small'; hold.id = 'btnHold'; hold.textContent = 'Pause';
     const wrap = document.createElement('div'); wrap.className = 'auto-wrap';
     btn.replaceWith(wrap); wrap.append(hold, btn);
@@ -538,7 +605,7 @@
   }
 
   function playAgain() {
-    Object.values(S.players).forEach((p) => Object.assign(p, { score: 0, reachedAt: 0, streak: 0, best: 0, right: 0, climb: 0, fast: undefined, idle: 0 }));
+    Object.values(S.players).forEach((p) => Object.assign(p, { score: 0, reachedAt: 0, streak: 0, best: 0, right: 0, climb: 0, fast: undefined, idle: 0, dares: 0 }));
     S.qi = -1; S.done = 0; S.answers = {}; S.game += 1; S.prevScores = {}; S.prevRanks = {}; S.moves = false; persist(); go('lobby');
   }
 
@@ -550,8 +617,8 @@
     document.body.dataset.tone = S.qi >= 0 ? TONES[S.qi % TONES.length] : 'pink';
     wipe(oldBg);
     const prog = $('#barProgress');
-    if (prog) prog.textContent = S.qi >= 0 && !['lobby', 'podium', 'wager'].includes(S.phase) ? `${pad(S.qi + 1)} / ${pad(total())}` : '';
-    ({ title: renderTitle, lobby: renderLobby, intro: renderIntro, question: renderQuestion, reveal: renderReveal, leaderboard: renderLeaderboard, wager: renderWager, write: renderWrite, podium: renderPodium })[S.phase]();
+    if (prog) prog.textContent = S.qi >= 0 && !['lobby', 'podium', 'wager'].includes(S.phase) && !(q().type === 'dare' && S.phase !== 'leaderboard') ? `${pad(realNo())} / ${pad(realTotal())}` : '';
+    ({ title: renderTitle, lobby: renderLobby, intro: renderIntro, question: renderQuestion, reveal: () => (q().type === 'dare' ? renderDare() : renderReveal()), leaderboard: renderLeaderboard, wager: renderWager, write: renderWrite, podium: renderPodium })[S.phase]();
   }
 
   // Colour change between screens: the old colour shrinks away in a circle instead of cutting.
@@ -573,7 +640,7 @@
         <div class="title-copy">
           <p class="kicker">${esc(NAME)} turns ${AGE} &middot; The birthday quiz</p>
           <h1 class="display">Squeak<br><em>&amp;</em> Seek</h1>
-          <p class="lede">${total()} question${total() === 1 ? '' : 's'}. One winner. Grab your phone.</p>
+          <p class="lede">${realTotal()} question${realTotal() === 1 ? '' : 's'}. One winner. Grab your phone.</p>
           ${problems.length ? `<div class="errors"><strong>Fix these in questions.json</strong><ul>${problems.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}
           <div class="actions">
             ${canResume ? `<button class="btn primary big" id="btnResume" ${!total() || S.loadError ? 'disabled' : ''}>Resume room ${esc(saved.code)} &middot; ${Object.keys(saved.players).length} players, ${saved.done} done &rarr;</button>` : ''}
@@ -659,14 +726,14 @@
     return '';
   }
 
-  const qLabel = () => `Question ${pad(S.qi + 1)} <span>/ ${pad(total())}</span>`;
+  const qLabel = () => (q().type === 'dare' ? 'Surprise dare' : `Question ${pad(realNo())} <span>/ ${pad(realTotal())}</span>`);
 
   function renderIntro() {
     const cq = q();
     stage.innerHTML = `
       <section class="intro ${cq.media ? 'has-media' : ''}">
         ${deco('intro')}
-        <p class="kicker big">${S.qi + 1 === total() && total() > 1 ? 'Final question' : qLabel()}${isDouble() ? ' <b class="intro-stamp">Double points</b>' : isBetQ() ? ' <b class="intro-stamp">The bets are in</b>' : cq.type === 'vote' ? ' <b class="intro-stamp">Majority wins</b>' : cq.type === 'dare' ? ` <b class="intro-stamp">Dare &middot; ${fmt(cq.points)} points</b>` : cq.type === 'write' ? ' <b class="intro-stamp">Write your own answer</b>' : ''}</p>
+        <p class="kicker big">${S.qi === finalIdx() && realTotal() > 1 ? 'Final question' : qLabel()}${isDouble() ? ' <b class="intro-stamp">Double points</b>' : isBetQ() ? ' <b class="intro-stamp">The bets are in</b>' : cq.type === 'vote' ? ' <b class="intro-stamp">Majority wins</b>' : cq.type === 'dare' ? ` <b class="intro-stamp">${fmt(cq.points)} points</b>` : cq.type === 'write' ? ' <b class="intro-stamp">Write your own answer</b>' : ''}</p>
         <h2 class="q-display">${esc(cq.text)}</h2>
         ${mediaHTML(cq, 'large', true)}
         ${cq.media?.video ? '' : '<div class="intro-bar"><span></span></div>'}
@@ -739,7 +806,7 @@
     const middle = cq.type === 'photo' ? '' : (mediaHTML(cq, 'medium', false) || `<div class="mascot mid bob">${birthdayRat()}</div>`);
     stage.innerHTML = `
       <section class="question ${cq.type} ${cq.type === 'write' ? 'voting' : ''}">
-        ${qHead(cq, `${isDouble() ? '<span class="q-double">Double points</span>' : isBetQ() ? '<span class="q-double">Bets are in</span>' : cq.type === 'vote' ? '<span class="q-double">Majority wins</span>' : cq.type === 'dare' ? '<span class="q-double">Dare &middot; vote</span>' : cq.type === 'write' ? '<span class="q-double">Vote for the best</span>' : ''}<div class="timer" id="timer"><div class="ring" id="timerRing" style="--p:1"></div><span id="timeLeft">${cq.timeLimit}</span></div>`)}
+        ${qHead(cq, `${isDouble() ? '<span class="q-double">Double points</span>' : isBetQ() ? '<span class="q-double">Bets are in</span>' : cq.type === 'vote' ? '<span class="q-double">Majority wins</span>' : cq.type === 'write' ? '<span class="q-double">Vote for the best</span>' : ''}<div class="timer" id="timer"><div class="ring" id="timerRing" style="--p:1"></div><span id="timeLeft">${cq.timeLimit}</span></div>`)}
         <div class="q-body">
           <div class="q-visual">${middle}</div>
           <div class="answered"><span id="answered">0 / ${playerCount()}</span><small>answered</small><div class="q-faces" id="qFaces"></div><p class="q-waiting" id="qWaiting"></p><button class="btn ghost small" id="btnSkip">End now</button></div>
@@ -752,7 +819,7 @@
   function renderReveal() {
     const cq = q();
     const right = Object.values(S.answers).filter((a) => a.correct).length;
-    const mood = cq.type === 'dare' || cq.type === 'write' || right >= Math.max(1, playerCount() / 2) ? 'happy' : 'sad';
+    const mood = cq.type === 'write' || right >= Math.max(1, playerCount() / 2) ? 'happy' : 'sad';
     const middle = cq.type === 'photo' ? '' : (mediaHTML(cq, 'medium', false) || `<div class="mascot mid rv-late ${mood === 'happy' ? 'hop' : 'droop'}">${birthdayRat({ mood })}</div>`);
     const spotOn = Object.values(S.answers).some((a) => a.off === 0);
     const label = !answeredCount() ? 'nobody answered' : cq.type === 'vote' ? (right ? 'voted with the room' : 'no two rats agreed') : cq.closest && !spotOn ? (right === 1 ? 'was closest' : 'were closest') : right === 0 ? 'not a single rat' : right === playerCount() && right > 1 ? 'full house' : 'got it right';
@@ -765,18 +832,16 @@
     const bets = (won && won[1] > 0 ? betLine('Biggest bet won', won) : '') + (lost && lost[1] < 0 ? betLine('Biggest bet lost', lost) : '');
     stage.innerHTML = `
       <section class="question reveal ${cq.type}">
-        ${qHead(cq, cq.type === 'dare' ? (S.dare ? `<div class="stat rv-late"><span class="stat-num">${S.dare.votes}<small>/${answeredCount()}</small></span><span class="stat-label">votes for ${esc(S.dare.name)}</span></div>` : '<div class="stat rv-late"><span class="stat-label">nobody voted</span></div>')
-          : cq.type === 'write' ? `<div class="stat rv-late"><span class="stat-num">${Math.max(0, ...Object.values(S.votesFor))}<small>/${answeredCount()}</small></span><span class="stat-label">votes for the favourite</span></div>`
+        ${qHead(cq, cq.type === 'write' ? `<div class="stat rv-late"><span class="stat-num">${Math.max(0, ...Object.values(S.votesFor))}<small>/${answeredCount()}</small></span><span class="stat-label">votes for the favourite</span></div>`
           : `<div class="stat rv-late"><span class="stat-num">${right}<small>/${playerCount()}</small></span><span class="stat-label">${label}</span></div>`)}
         <div class="q-body">
           <div class="q-visual">${middle}</div>
-          <div class="rv-side">${cq.type === 'dare' && S.dare ? '<div id="dareBox"></div>' : bets || fastest}<button class="btn primary big" id="btnNext">${S.qi + 1 >= total() ? 'Final results &rarr;' : 'Leaderboard &rarr;'}</button></div>
+          <div class="rv-side">${bets || fastest}<button class="btn primary big" id="btnNext">${S.qi + 1 >= total() ? 'Final results &rarr;' : 'Leaderboard &rarr;'}</button></div>
         </div>
         ${answersHTML(cq, true)}
       </section>`;
     $('#btnNext').addEventListener('click', next);
-    paintDare();
-    if (!(cq.type === 'dare' && S.dare && !DARE_OVER.includes(S.dare.st))) autoNext(); // a dare waits for the judge
+    autoNext();
   }
 
   // Count a number up (or down) in an element.
@@ -807,7 +872,7 @@
       <section class="leaderboard">
         ${deco('lb')}
         <header>
-          <div><p class="kicker">After question ${S.qi + 1} of ${total()}</p><h2 class="display-md">Top rats</h2></div>
+          <div><p class="kicker">${q().type === 'dare' ? 'After the dare' : `After question ${realNo()} of ${realTotal()}`}</p><h2 class="display-md">Top rats</h2></div>
           <div class="lb-callouts">${climber ? callout('Biggest climber', climber.p, `up ${climber.d} places`) : ''}${hot ? callout('On a streak', hot, `${hot.streak} right in a row`) : ''}</div>
         </header>
         <ol class="ranks">${top.map((p, i) => {
@@ -938,5 +1003,5 @@
   $('#btnMute').classList.toggle('muted', A.muted);
 
   loadQuestions().then(render);
-  window.__host = S; // for debugging in the console
+  window.__host = S; window.__pickDare = pickDare; // for debugging in the console, and for the tests
 })();

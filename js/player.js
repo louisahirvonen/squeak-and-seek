@@ -170,9 +170,9 @@
   function pIntro(s) {
     screen.innerHTML = `${header()}
       <section class="p-center">
-        <p class="kicker">${s.q + 1 === s.total && s.total > 1 ? 'Final question' : `Question ${pad(s.q + 1)} / ${pad(s.total)}`}</p>
-        <h2 class="p-title">${s.dbl ? 'Double points' : s.wg ? 'The bets are in' : s.video ? 'Watch the video' : 'Get ready'}</h2>
-        <p class="p-lede">${s.video ? 'It plays on the big screen. Answers come right after.' : s.type === 'write' ? 'You write your own answer for this one. Nobody sees who wrote what.' : s.type === 'dare' ? 'A dare. Vote for who has to do it.' : s.type === 'vote' ? 'A vote: the most popular answer wins.' : 'Read the question on the big screen.'}${s.dbl ? ' This one counts twice.' : s.wg ? ' Your bet rides on this one.' : ''}</p>
+        <p class="kicker">${s.type === 'dare' ? 'Surprise' : (s.no || s.q + 1) === (s.of || s.total) && s.total > 1 ? 'Final question' : `Question ${pad(s.no || s.q + 1)} / ${pad(s.of || s.total)}`}</p>
+        <h2 class="p-title">${s.type === 'dare' ? 'A dare' : s.dbl ? 'Double points' : s.wg ? 'The bets are in' : s.video ? 'Watch the video' : 'Get ready'}</h2>
+        <p class="p-lede">${s.video ? 'It plays on the big screen. Answers come right after.' : s.type === 'write' ? 'You write your own answer for this one. Nobody sees who wrote what.' : s.type === 'dare' ? 'The wheel picks one of you. Eyes on the big screen.' : s.type === 'vote' ? 'A vote: the most popular answer wins.' : 'Read the question on the big screen.'}${s.dbl ? ' This one counts twice.' : s.wg ? ' Your bet rides on this one.' : ''}</p>
       </section>`;
   }
 
@@ -246,7 +246,7 @@
       // Vote for a guest (not yourself). The answer with the most votes wins.
       screen.innerHTML = `${header()}${timerRow}
         <section class="p-votes">
-          <p class="kicker">${s.type === 'dare' ? 'Who has to do it? Vote.' : 'Majority wins. Vote for a rat.'}</p>
+          <p class="kicker">Majority wins. Vote for a rat.</p>
           <div class="p-vote-list">${s.opts.map((o, i) => (o.pid === me.id ? '' : `<button class="p-vote" data-i="${i}">${SQ.avatar(o.pid, '', !!o.bd)}<span>${esc(o.label)}</span></button>`)).join('')}</div>
         </section>`;
       startBar();
@@ -361,9 +361,10 @@
   // Dare: the chosen rat accepts or declines here; everyone else follows along.
   function pDare(s, r) {
     const d = s.dare; const me1 = d && d.h === SQ.hash(me.id); const pts = d ? fmt(d.pts) : '';
-    let kicker = 'The dare', title = 'Nobody', sub = 'Nobody voted, so nobody has to.', cls = 'none', btns = '';
-    if (d && me1) {
-      ({ asked: () => { kicker = 'The room has chosen'; title = 'It\'s you'; sub = `Do the dare on the big screen for ${pts} points. ${esc(NAME)} is the judge.`; btns = '<div class="p-dare-btns"><button class="btn primary big" id="dareYes">I\'ll do it</button><button class="btn ghost" id="dareNo">No thanks</button></div>'; },
+    let kicker = 'The dare', title = 'Nobody', sub = 'Nobody has to this time.', cls = 'none', btns = '';
+    if (d && d.st === 'spin') { kicker = 'The wheel is spinning'; title = 'Who?'; sub = 'It could be you.'; }
+    else if (d && me1) {
+      ({ asked: () => { kicker = 'The wheel has chosen'; title = 'It\'s you'; sub = `Do the dare on the big screen for ${pts} points. ${esc(NAME)} is the judge.`; btns = '<div class="p-dare-btns"><button class="btn primary big" id="dareYes">I\'ll do it</button><button class="btn ghost" id="dareNo">No thanks</button></div>'; },
         accepted: () => { kicker = 'Dare accepted'; title = 'Go!'; sub = `${esc(NAME)} is watching.`; },
         done: () => { cls = 'right'; kicker = 'Dare done'; title = `+${pts}`; sub = 'Worth it.'; },
         failed: () => { cls = 'wrong'; kicker = 'The judge has spoken'; title = 'Not quite'; sub = 'No points, but full marks for trying.'; },
@@ -394,7 +395,7 @@
     const extra = mine ? [moveLine(mine), gapLine(mine)].filter(Boolean) : [];
     screen.innerHTML = `${header()}
       <section class="p-center">
-        <p class="kicker">After question ${s.q + 1} of ${s.total}</p>
+        <p class="kicker">After question ${s.no || s.q + 1} of ${s.of || s.total}</p>
         <h2 class="p-title huge">${mine ? ordinal(mine.k) : '&ndash;'}</h2>
         <p class="p-lede">${mine ? fmt(mine.s) : 0} points${mine && mine.k <= 5 ? ' &middot; you made the top 5' : ''}</p>
         ${extra.length ? `<p class="p-extra">${extra.join('<br>')}</p>` : ''}

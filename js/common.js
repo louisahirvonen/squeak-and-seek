@@ -118,8 +118,9 @@
         // Everyone writes an answer; the answers are then shown without names and the room votes for the best one.
         options = []; correct = []; extra = { writeLimit: Number(q.writeLimit) || 45, voteLimit: Number(q.timeLimit) || 40 };
       } else if (type === 'dare') {
-        // The room votes for who has to do the task in "text"; that guest accepts or declines, and the host judges.
-        options = []; correct = []; extra = { guests: true, points: Number(q.points) > 0 ? Math.round(Number(q.points)) : 1500 };
+        // A surprise event, not a numbered question: a wheel picks a guest for the task in "text"; they accept or
+        // decline, and the host judges.
+        options = []; correct = []; extra = { points: Number(q.points) > 0 ? Math.round(Number(q.points)) : 1500 };
       } else if (type === 'vote' && q.options === 'players') {
         // Majority vote among the guests themselves: the options are filled in with whoever is playing when it is asked.
         options = []; correct = []; extra = { guests: true };

@@ -93,25 +93,37 @@ const server = http.createServer((req, res) => {
     check(JSON.stringify(await H(() => window.__host.questions[2].correct)) === '[0,2]', 'a tied vote lets both answers win');
     await host.click('#btnNext'); await sleep(2500);
 
-    // Q4: a dare. The room votes for Brie Brie, she accepts on her phone, the host judges it done.
-    await host.click('#btnNext'); await sleep(1000); await shot(host, '05b-dare-intro'); await toQuestion();
-    for (let i = 0; i < 12; i++) if (i !== 2) await P[i].click('.p-vote:has-text("Brie Brie")');
-    await P[2].click('.p-vote:has-text("Jo")');
-    await host.click('#btnSkip'); await toReveal();
-    const brieBefore = (await byName('Brie Brie')).score;
-    await shot(host, '05c-dare-asked'); await shot(P[2], 'p-05c-dare-you'); await shot(P[5], 'p-05c-dare-other');
-    check(await P[2].locator('#dareYes').count() === 1 && await P[5].locator('#dareYes').count() === 0, 'only the chosen rat is asked to accept the dare');
+    // A surprise dare: the wheel picks someone (never the birthday rat), they accept on their phone, the host says done.
+    await host.click('#btnNext'); await sleep(1200); await shot(host, '05b-dare-intro'); await shot(P[5], 'p-05b-dare-intro');
+    await host.waitForFunction(() => window.__host.phase === 'reveal' && window.__host.dare, null, { timeout: 15000 }); await sleep(2500);
+    await shot(host, '05c-dare-spinning'); await shot(P[5], 'p-05c-dare-spinning');
+    const onWheel = await H(() => window.__host.dare.list.map((p) => p.name));
+    check(onWheel.length === 13 && !onWheel.includes('Louisa') && !onWheel.includes('Camembert C'), `the wheel holds everyone who is playing, except the birthday rat (${onWheel.length} names)`);
+    check(!(await P[3].textContent('#screen')).includes(await H(() => window.__host.dare.name)), 'phones do not know who it is while the wheel turns');
+    await host.waitForFunction(() => window.__host.dare.st === 'asked', null, { timeout: 15000 }); await sleep(1200);
+    const who = await H(() => window.__host.dare.name); const wi = NAMES.indexOf(who); const other = wi === 5 ? 6 : 5;
+    const pin = await host.evaluate(() => { const w = document.querySelector('#wheel').getBoundingClientRect(); const el = document.elementFromPoint(w.left + w.width / 2, w.top + 30); return el.closest('svg') ? [...document.querySelectorAll('#wheel text')].map((t) => { const r = t.getBoundingClientRect(); return { n: t.textContent, d: Math.hypot(r.left + r.width / 2 - (w.left + w.width / 2), r.top + r.height / 2 - (w.top + w.height * 0.2)) }; }).sort((x, y) => x.d - y.d)[0].n : ''; });
+    check(who.startsWith(pin.replace('…', '')), `the wheel stops with the chosen name under the pin (${who})`);
+    const whoBefore = (await byName(who)).score;
+    await shot(host, '05d-dare-asked'); await shot(P[wi], 'p-05d-dare-you'); await shot(P[other], 'p-05d-dare-other');
+    check(await P[wi].locator('#dareYes').count() === 1 && await P[other].locator('#dareYes').count() === 0, 'only the chosen rat is asked to accept the dare');
     await H(() => { SQ.cfg.autoAdvanceSeconds = 1; }); await sleep(2500);
     check(await H(() => window.__host.phase) === 'reveal', 'the screen waits for the judge instead of moving on');
     await H(() => { SQ.cfg.autoAdvanceSeconds = 0; });
-    await P[2].click('#dareYes'); await sleep(600);
+    await P[wi].click('#dareYes'); await sleep(600);
     check(await H(() => window.__host.dare.st) === 'accepted', 'accepting on the phone reaches the big screen');
-    await shot(host, '05d-dare-accepted'); await shot(P[2], 'p-05d-dare-go');
+    await shot(P[wi], 'p-05e-dare-go');
     await host.click('#dareBox [data-st="done"]'); await sleep(700);
-    const brieAfter = (await byName('Brie Brie')).score;
-    check(brieAfter === brieBefore + 1500, `a finished dare gives 1,500 points (${brieBefore} -> ${brieAfter})`);
+    const whoAfter = (await byName(who)).score;
+    check(whoAfter === whoBefore + 1500, `a finished dare gives 1,500 points (${whoBefore} -> ${whoAfter})`);
     check((await byName('Cheddar Chad')).streak === 3, 'a dare leaves streaks alone');
-    await shot(host, '05e-dare-done'); await shot(P[2], 'p-05e-dare-done'); await shot(P[5], 'p-05e-dare-done-other');
+    await shot(host, '05e-dare-done'); await shot(P[wi], 'p-05e-dare-done');
+    // The wheel leans towards low scores and away from rats who already had a dare.
+    const lean = await host.evaluate(() => {
+      const list = [{ score: 9000 }, { score: 5000 }, { score: 1000 }, { score: 1000, dares: 1 }]; const n = [0, 0, 0, 0];
+      for (let i = 0; i < 20000; i++) n[window.__pickDare(list)] += 1; return n;
+    });
+    check(lean[2] > lean[0] * 1.7 && lean[2] < lean[0] * 2.3 && lean[1] > lean[0] && lean[3] < lean[2] / 3, `last place is about twice as likely as the leader (${lean.join(' / ')})`);
     await host.click('#btnNext'); await sleep(2500);
 
     // Q5: anonymous answers. Twelve rats write, then everyone votes; Louisa's answer wins.
@@ -148,6 +160,7 @@ const server = http.createServer((req, res) => {
     await shot(host, '07-bet'); await shot(P[0], 'p-07-bet-placed'); await shot(P[6], 'p-07-no-bet');
     check(await H(() => Object.keys(window.__host.bets).length) === 11, 'bets reach the big screen');
     await host.click('#btnNext'); await sleep(1000); await shot(host, '08-final-intro'); await toQuestion();
+    check((await host.textContent('#barProgress')).trim() === '05 / 05', 'dares are not counted as questions');
     await shot(host, '09-final-question');
     await P[0].click('.p-answer[data-i="1"]'); // Louisa: all in, right
     await P[1].click('.p-answer[data-i="0"]'); // Chad: half, wrong

@@ -49,6 +49,10 @@
       "correct": 3
     },
     {
+      "type": "dare",
+      "text": "Håll ett hyllningstal till Louisa på 20 sekunder."
+    },
+    {
       "type": "vote",
       "text": "Vem skulle överleva längst i en zombieapokalyps?",
       "options": "players"
@@ -66,6 +70,10 @@
         0,
         1
       ]
+    },
+    {
+      "type": "dare",
+      "text": "Sjung refrängen på valfri Mello-låt."
     },
     {
       "type": "photo",
@@ -111,6 +119,10 @@
       "text": "Vad är Louisas bästa egenskap?"
     },
     {
+      "type": "dare",
+      "text": "Gör din bästa imitation av Louisa."
+    },
+    {
       "type": "number",
       "text": "Hur länge har Louisa och Mattias varit ihop?",
       "min": 0,
@@ -122,6 +134,10 @@
       "type": "vote",
       "text": "Vem har bäst outfit ikväll?",
       "options": "players"
+    },
+    {
+      "type": "dare",
+      "text": "Visa din bästa K-pop-dans i 15 sekunder."
     },
     {
       "type": "truefalse",
@@ -137,6 +153,10 @@
       "options": "players"
     },
     {
+      "type": "dare",
+      "text": "Sälj in Louisa som en produkt i TV-shop på 20 sekunder."
+    },
+    {
       "type": "multiple",
       "text": "Vad var Louisas mål för 2026?",
       "options": [
@@ -148,10 +168,6 @@
       "correct": 3
     },
     {
-      "type": "dare",
-      "text": "Vem ska hålla ett hyllningstal till Louisa på 20 sekunder?"
-    },
-    {
       "type": "multiple",
       "text": "Vad ska man ge Louisa om hon har haft en dålig dag?",
       "options": [
@@ -161,6 +177,10 @@
         "Tomatjuice"
       ],
       "correct": 2
+    },
+    {
+      "type": "dare",
+      "text": "Gör en pole dance-pose, utan stång."
     },
     {
       "type": "write",
@@ -179,6 +199,10 @@
       "correct": 1
     },
     {
+      "type": "dare",
+      "text": "Rappa fyra rader om Louisa."
+    },
+    {
       "type": "number",
       "text": "Hur många timmar hade Louisa sovit per dag om hon inte behövde jobba?",
       "media": {
@@ -194,6 +218,10 @@
       "type": "vote",
       "text": "Vem kommer lägga sig tidigast inatt?",
       "options": "players"
+    },
+    {
+      "type": "dare",
+      "text": "Spela en råtta som just har hittat en ost."
     },
     {
       "type": "multiple",

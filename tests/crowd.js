@@ -57,7 +57,15 @@ const server = http.createServer((req, res) => {
       await host.click('#btnNext'); await sleep(1200);
     }
     await shot(host, `02-intro-q${qi}`);
-    await host.waitForFunction(() => ['write', 'question'].includes(window.__host.phase), null, { timeout: 30000 }); await sleep(400);
+    await host.waitForFunction(() => { const S = window.__host; return ['write', 'question'].includes(S.phase) || (S.phase === 'reveal' && S.questions[S.qi].type === 'dare'); }, null, { timeout: 30000 }); await sleep(400);
+    if (await host.evaluate(() => window.__host.phase) === 'reveal') {
+      // A surprise dare: watch the wheel, then the judge says it was done.
+      await sleep(2500); await shot(host, `03-dare-spin-q${qi}`);
+      await host.waitForSelector('#dareBox [data-st="done"]', { timeout: 15000 }); await sleep(800); await shot(host, `04-dare-q${qi}`);
+      await host.click('#dareBox [data-st="done"]'); await sleep(600);
+      await host.click('#btnNext'); await sleep(3200); await shot(host, `05-leaderboard-q${qi}`);
+      continue;
+    }
     if (await host.evaluate(() => window.__host.phase) === 'write') {
       // Anonymous answers: thirteen rats write something, then the vote starts by itself or on the button.
       for (let i = 0; i < NAMES.length - 2; i++) { await players[i].fill('#pText', ['Humorn', 'Att hon alltid har snacks med sig', 'Omtanken', 'Hon kan sova var som helst, när som helst', 'Dansen'][i % 5] + (i > 4 ? ' ' + i : '')).catch(() => {}); await players[i].click('#writeForm button').catch(() => {}); }
@@ -77,7 +85,7 @@ const server = http.createServer((req, res) => {
         await players[i].click('#pLock').catch(() => {});
       } else if (Q.type === 'write') {
         await players[i].click(right ? '.p-text >> nth=0' : '.p-text >> nth=2').catch(() => {});
-      } else if (Q.type === 'vote' || Q.type === 'dare') {
+      } else if (Q.type === 'vote') {
         await players[i].click(right ? '.p-vote:has-text("Louisa"), .p-vote:has-text("Jo")' : '.p-vote >> nth=3').catch(() => {});
       } else {
         const choice = right ? Q.correct[0] : [...Array(Q.n).keys()].find((x) => !Q.correct.includes(x));
@@ -89,7 +97,6 @@ const server = http.createServer((req, res) => {
     await host.click('#btnSkip');
     await host.waitForSelector('.reveal', { timeout: 8000 }); await sleep(2100);
     await shot(host, `04-reveal-q${qi}`); await shot(players[1], `p-04-reveal-q${qi}`);
-    if (await host.locator('#dareBox [data-st="done"]').count()) { await shot(host, `04b-dare-q${qi}`); await host.click('#dareBox [data-st="done"]'); await sleep(500); } // a dare: the judge says it was done
     await host.click('#btnNext'); await sleep(3200);
     if (qi < total - 1) { await shot(host, `05-leaderboard-q${qi}`); await shot(players[2], `p-05-leaderboard-q${qi}`); }
   }
