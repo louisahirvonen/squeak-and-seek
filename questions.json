@@ -49,13 +49,14 @@
       "correct": 3
     },
     {
-      "type": "dare",
-      "text": "Håll ett hyllningstal till Louisa på 20 sekunder."
-    },
-    {
       "type": "vote",
       "text": "Vem skulle överleva längst i en zombieapokalyps?",
       "options": "players"
+    },
+    {
+      "type": "dare",
+      "text": "Håll ett hyllningstal till Louisa på 20 sekunder.",
+      "seconds": 20
     },
     {
       "type": "multiple",
@@ -70,10 +71,6 @@
         0,
         1
       ]
-    },
-    {
-      "type": "dare",
-      "text": "Sjung refrängen på valfri Mello-låt."
     },
     {
       "type": "photo",
@@ -115,12 +112,13 @@
       ]
     },
     {
-      "type": "write",
-      "text": "Vad är Louisas bästa egenskap?"
+      "type": "dare",
+      "text": "Säg namnet på alla i rummet på 30 sekunder.",
+      "seconds": 30
     },
     {
-      "type": "dare",
-      "text": "Gör din bästa imitation av Louisa."
+      "type": "write",
+      "text": "Vad är Louisas bästa egenskap?"
     },
     {
       "type": "number",
@@ -137,7 +135,7 @@
     },
     {
       "type": "dare",
-      "text": "Visa din bästa K-pop-dans i 15 sekunder."
+      "text": "Visa den senaste bilden i din kamerarulle."
     },
     {
       "type": "truefalse",
@@ -153,10 +151,6 @@
       "options": "players"
     },
     {
-      "type": "dare",
-      "text": "Sälj in Louisa som en produkt i TV-shop på 20 sekunder."
-    },
-    {
       "type": "multiple",
       "text": "Vad var Louisas mål för 2026?",
       "options": [
@@ -166,6 +160,12 @@
         "Gå ner i split"
       ],
       "correct": 3
+    },
+    {
+      "type": "dare",
+      "text": "Freestyledans i 30 sekunder.",
+      "seconds": 30,
+      "music": true
     },
     {
       "type": "multiple",
@@ -179,12 +179,12 @@
       "correct": 2
     },
     {
-      "type": "dare",
-      "text": "Gör en pole dance-pose, utan stång."
-    },
-    {
       "type": "write",
       "text": "Vilken blir Louisas nästa hobby?"
+    },
+    {
+      "type": "dare",
+      "text": "Ge en komplimang till tre personer du inte har träffat förrän ikväll."
     },
     {
       "type": "multiple",
@@ -199,10 +199,6 @@
       "correct": 1
     },
     {
-      "type": "dare",
-      "text": "Rappa fyra rader om Louisa."
-    },
-    {
       "type": "number",
       "text": "Hur många timmar hade Louisa sovit per dag om hon inte behövde jobba?",
       "media": {
@@ -215,13 +211,13 @@
       "correct": 16
     },
     {
+      "type": "dare",
+      "text": "Hämta påfyllning åt Louisa och servera den med stil."
+    },
+    {
       "type": "vote",
       "text": "Vem kommer lägga sig tidigast inatt?",
       "options": "players"
-    },
-    {
-      "type": "dare",
-      "text": "Spela en råtta som just har hittat en ost."
     },
     {
       "type": "multiple",

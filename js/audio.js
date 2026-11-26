@@ -6,7 +6,7 @@
   const state = {
     volume: saved.volume ?? 0.7,
     muted: saved.muted ?? false,
-    slots: Object.assign({ lobby: 'synth:lobby', question: 'synth:question', podium: 'synth:podium' }, saved.slots || {}),
+    slots: Object.assign({ lobby: 'synth:lobby', question: 'synth:question', podium: 'synth:podium', dance: 'synth:dance' }, saved.slots || {}),
   };
   const localFiles = {}; // slot -> {name, url} chosen from this computer (not saved across reloads)
   let tracks = []; // from music/music.json
@@ -82,6 +82,12 @@
       mel: [72, 76, 79, 84, null, 79, 84, null, 81, 79, 77, 76, 77, 79, 76, null,
             72, 76, 79, 84, null, 86, 88, null, 86, 84, 83, 81, 79, 83, 84, null],
       wonk: 0.008 },
+    // Goofy oom-pah for a dance dare: fast, bouncy and a bit out of tune on purpose.
+    dance: { bpm: 172, swing: 0.3,
+      bass: [48, null, 55, null, 43, null, 55, null, 50, null, 57, null, 43, null, 55, 47],
+      mel: [76, 76, 79, 76, 72, null, 74, 75, 76, null, 84, null, 83, 81, 79, null,
+            77, 77, 81, 77, 74, null, 73, 74, 79, 78, 79, 83, 84, null, 72, null],
+      wonk: 0.045 },
   };
   let synth = null;
   function startSynth(name) {
@@ -154,14 +160,14 @@
   };
 
   // ---------- Settings panel ----------
-  const SLOT_NAMES = { lobby: 'Lobby', question: 'Questions (countdown)', podium: 'Podium' };
+  const SLOT_NAMES = { lobby: 'Lobby', question: 'Questions (countdown)', podium: 'Podium', dance: 'Dance dare' };
   function panelHTML() {
     const opt = (slot, value, label) => `<option value="${value}" ${state.slots[slot] === value ? 'selected' : ''}>${SQ.escapeHtml(label)}</option>`;
     const rows = Object.keys(SLOT_NAMES).map((slot) => `
       <label class="slot"><span>${SLOT_NAMES[slot]}</span>
         <select data-slot="${slot}">
           ${opt(slot, 'synth:' + slot, 'Built-in: wonky synth (' + slot + ')')}
-          ${['lobby', 'question', 'podium'].filter((s) => s !== slot).map((s) => opt(slot, 'synth:' + s, 'Built-in: wonky synth (' + s + ')')).join('')}
+          ${['lobby', 'question', 'podium', 'dance'].filter((s) => s !== slot).map((s) => opt(slot, 'synth:' + s, 'Built-in: wonky synth (' + s + ')')).join('')}
           ${tracks.map((t) => opt(slot, t.file, t.title || t.file)).join('')}
           ${opt(slot, 'local', localFiles[slot] ? 'This computer: ' + localFiles[slot].name : 'Choose a file from this computer…')}
           ${opt(slot, 'none', 'No music')}

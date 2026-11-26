@@ -320,10 +320,30 @@
     paintDare();
     if (DARE_OVER.includes(d.st)) autoNext();
   }
+  // A dare with "seconds" gets a clock the host starts when the rat is ready; with "music" the dance music plays
+  // for as long as the clock runs.
+  function startDareClock() {
+    const d = S.dare; const cq = q(); if (!d || !cq.seconds || d.ends || DARE_OVER.includes(d.st) || d.st === 'spin') return;
+    if (d.st === 'asked') setDare('accepted');
+    d.ends = performance.now() + cq.seconds * 1000; d.timeUp = false;
+    if (cq.music) A.playSlot('dance');
+    A.sfx.go(); paintDare();
+    const tick = () => {
+      if (S.dare !== d || !d.ends) return;
+      const left = Math.ceil((d.ends - performance.now()) / 1000);
+      const el = $('#dareClock'); if (el) el.textContent = Math.max(0, left);
+      if (left <= 3 && left > 0 && left !== d.lastTick) { d.lastTick = left; A.sfx.tick(left); }
+      if (left <= 0) { stopDareClock(); d.timeUp = true; A.sfx.timeUp(); paintDare(); return; }
+      later(tick, 200);
+    };
+    later(tick, 200);
+  }
+  function stopDareClock() { const d = S.dare; if (!d || !d.ends) return; d.ends = 0; if (q().music) A.stopMusic(); }
   function onDare({ id, ok }) { if (S.phase === 'reveal' && S.dare && S.dare.id === id && S.dare.st === 'asked') setDare(ok ? 'accepted' : 'declined'); }
   function setDare(st) {
     const d = S.dare; const cq = q(); if (!d || S.phase !== 'reveal' || d.st === 'spin' || DARE_OVER.includes(d.st)) return;
     d.st = st;
+    if (DARE_OVER.includes(st)) stopDareClock();
     if (st === 'done' && S.players[d.id]) { S.players[d.id].score += cq.points; S.players[d.id].reachedAt = Date.now(); persist(); SQ.confetti(2600); A.sfx.fanfare(); }
     else if (st === 'accepted') A.sfx.chime(); else A.sfx.womp();
     paintDare(); broadcastAll();
@@ -336,8 +356,10 @@
     const line = { asked: 'Waiting for the answer on their phone&hellip;', accepted: `Accepted. ${esc(NAME)} is the judge.`, done: `Done. +${pts} points.`, failed: 'Not quite. No points.', declined: 'Said no thanks.' }[d.st];
     box.className = `dare-box pop-in dare-${d.st}`;
     box.innerHTML = `<div class="dare-who">${avatar(d.id)}<div><small>The dare goes to</small><strong>${esc(d.name)}</strong><span>${line}</span></div></div>
+      ${DARE_OVER.includes(d.st) || !q().seconds ? '' : d.ends ? `<div class="dare-clock running"><b id="dareClock">${Math.max(0, Math.ceil((d.ends - performance.now()) / 1000))}</b><span>seconds left</span></div>` : d.timeUp ? '<div class="dare-clock"><b>0</b><span>Time is up</span></div>' : `<button class="btn dark small dare-start" id="dareStart">Start the clock &middot; ${q().seconds} s${q().music ? ' + music' : ''}</button>`}
       ${DARE_OVER.includes(d.st) ? '' : `<div class="dare-btns"><button class="btn primary small" data-st="done">Done &middot; +${pts}</button><button class="btn ghost small" data-st="failed">Failed</button><button class="btn ghost small" data-st="declined">Declined</button></div>`}`;
     box.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', () => setDare(b.dataset.st)));
+    $('#dareStart')?.addEventListener('click', startDareClock);
   }
 
   // ---------- reactions ----------

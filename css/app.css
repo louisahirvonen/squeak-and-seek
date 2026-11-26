@@ -756,3 +756,10 @@ body.player[data-phase="reveal"] .screen, body.player[data-phase="leaderboard"] 
 .question.dare .rv-side .btn.big { align-self: flex-end; }
 .question.dare .dare-box { max-width: none; }
 .dare-box.dare-spin strong { color: var(--paper); }
+
+/* dare clock */
+.dare-start { align-self: flex-start; background: var(--paper); color: var(--ink); }
+.dare-clock { display: flex; align-items: baseline; gap: 10px; }
+.dare-clock b { font-family: var(--display); font-variation-settings: 'wdth' 80; font-weight: 800; font-size: clamp(2.6rem, 8vh, 5rem); line-height: .9; letter-spacing: -.04em; color: var(--lime); font-variant-numeric: tabular-nums; }
+.dare-clock span { font-weight: 700; text-transform: uppercase; letter-spacing: .14em; font-size: .8rem; opacity: .8; }
+.dare-clock.running b { animation: pulse 1s infinite; }

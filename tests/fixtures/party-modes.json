@@ -29,7 +29,9 @@
     },
     {
       "type": "dare",
-      "text": "Håll ett hyllningstal till Louisa på 20 sekunder."
+      "text": "Freestyledans i 30 sekunder.",
+      "seconds": 30,
+      "music": true
     },
     {
       "type": "write",

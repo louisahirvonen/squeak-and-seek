@@ -113,8 +113,14 @@ const server = http.createServer((req, res) => {
     await P[wi].click('#dareYes'); await sleep(600);
     check(await H(() => window.__host.dare.st) === 'accepted', 'accepting on the phone reaches the big screen');
     await shot(P[wi], 'p-05e-dare-go');
+    // This dare has a clock and dance music: the host starts both, and the verdict stops them.
+    await host.click('#dareStart'); await sleep(1500);
+    const clock = Number(await host.textContent('#dareClock'));
+    check(clock >= 27 && clock <= 29, `the host starts a 30-second clock for the dare (${clock} left)`);
+    await shot(host, '05e-dare-clock');
     await host.click('#dareBox [data-st="done"]'); await sleep(700);
     const whoAfter = (await byName(who)).score;
+    check(await host.locator('#dareClock').count() === 0, 'the verdict stops the clock');
     check(whoAfter === whoBefore + 1500, `a finished dare gives 1,500 points (${whoBefore} -> ${whoAfter})`);
     check((await byName('Cheddar Chad')).streak === 3, 'a dare leaves streaks alone');
     await shot(host, '05e-dare-done'); await shot(P[wi], 'p-05e-dare-done');

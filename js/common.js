@@ -120,7 +120,7 @@
       } else if (type === 'dare') {
         // A surprise event, not a numbered question: a wheel picks a guest for the task in "text"; they accept or
         // decline, and the host judges.
-        options = []; correct = []; extra = { points: Number(q.points) > 0 ? Math.round(Number(q.points)) : 1500 };
+        options = []; correct = []; extra = { points: Number(q.points) > 0 ? Math.round(Number(q.points)) : 1500, seconds: Number(q.seconds) > 0 ? Math.round(Number(q.seconds)) : 0, music: !!q.music };
       } else if (type === 'vote' && q.options === 'players') {
         // Majority vote among the guests themselves: the options are filled in with whoever is playing when it is asked.
         options = []; correct = []; extra = { guests: true };
