@@ -33,7 +33,7 @@
       "max": 15,
       "unit": "år",
       "correct": 6,
-      "image": "media/black-dress.jpg"
+      "image": "media/together.jpg"
     },
     {
       "text": "Vad jobbar Louisa med, egentligen?",
@@ -291,7 +291,8 @@
     {
       "type": "vote",
       "text": "Vem kommer lägga sig tidigast inatt?",
-      "options": "players"
+      "options": "players",
+      "image": "media/black-dress.jpg"
     },
     {
       "type": "dare",
