@@ -56,16 +56,13 @@ const server = http.createServer((req, res) => {
     await host.click('#btnGo'); await toQuestion();
     for (let i = 0; i < 13; i++) await P[i].click('.p-answer[data-i="0"]');
     await P[13].click('.p-answer[data-i="1"]'); await P[14].click('.p-answer[data-i="1"]');
-    await toReveal();
-
-    // A clip plays once the answer is out, and the countdown to the leaderboard waits for it.
-    await H(() => { SQ.cfg.autoAdvanceSeconds = 20; });
-    await host.waitForSelector('#afterVideo video', { timeout: 6000 });
-    check(await host.locator('#autoCount').count() === 0, 'the countdown waits while the clip plays');
-    await shot(host, '00-after-video');
+    // This question has a clip: it plays once the answers are in, and the right answer waits for it.
+    await host.waitForSelector('#afterVideo video', { timeout: 6000 }); await sleep(500);
+    check(await H(() => window.__host.phase) === 'question' && await host.locator('.reveal').count() === 0, 'the clip plays before the answer is revealed');
+    await shot(host, '00-clip-before-answer');
     await host.waitForSelector('#afterVideo', { state: 'detached', timeout: 12000 });
-    check(await host.locator('#autoCount').count() === 1 && await H(() => window.__host.phase) === 'reveal', 'after the clip (cut at its time limit) the countdown starts');
-    await host.click('#btnHold'); await H(() => { SQ.cfg.autoAdvanceSeconds = 0; });
+    await toReveal();
+    check(await H(() => window.__host.phase) === 'reveal', 'after the clip (cut at its time limit) the answer is revealed');
 
     // Reactions float up the big screen.
     check(await P[1].locator('#react').isVisible(), 'phones show the reaction buttons on the result screen');
@@ -85,7 +82,9 @@ const server = http.createServer((req, res) => {
     for (let i = 1; i <= 10; i++) await P[i].click('.p-vote:has-text("Louisa")');
     await shot(P[1], 'p-03-voted');
     for (const i of [0, 11, 12, 13]) await P[i].click('.p-vote:has-text("Jo")');
+    const louisaPre = (await byName('Louisa')).score;
     await host.click('#btnSkip'); await toReveal();
+    check((await byName('Louisa')).score === louisaPre + 300 && /room picked you/.test(await P[0].textContent('#screen')), 'the rat the room voted for gets 300 points and is told so');
     await shot(host, '04-vote-reveal'); await shot(P[1], 'p-04-vote-won'); await shot(P[11], 'p-04-vote-lost');
     const chad = await byName('Cheddar Chad'); const stina = await byName('Stilton Stina');
     check(chad.answer.correct && chad.answer.base === 1000 && chad.streak === 2, `voting with the majority scores 1000 and extends the streak (${chad.answer.points} pts, streak ${chad.streak})`);
@@ -113,26 +112,32 @@ const server = http.createServer((req, res) => {
     const who = await H(() => window.__host.dare.name); const wi = NAMES.indexOf(who); const other = wi === 5 ? 6 : 5;
     const pin = await host.evaluate(() => { const w = document.querySelector('#wheel').getBoundingClientRect(); const el = document.elementFromPoint(w.left + w.width / 2, w.top + 30); return el.closest('svg') ? [...document.querySelectorAll('#wheel text')].map((t) => { const r = t.getBoundingClientRect(); return { n: t.textContent, d: Math.hypot(r.left + r.width / 2 - (w.left + w.width / 2), r.top + r.height / 2 - (w.top + w.height * 0.2)) }; }).sort((x, y) => x.d - y.d)[0].n : ''; });
     check(who.startsWith(pin.replace('…', '')), `the wheel stops with the chosen name under the pin (${who})`);
-    const whoBefore = (await byName(who)).score;
+    const whoBefore = (await byName(NAMES[other])).score;
     await shot(host, '05d-dare-asked'); await shot(P[wi], 'p-05d-dare-you'); await shot(P[other], 'p-05d-dare-other');
     check(await P[wi].locator('#dareYes').count() === 1 && await P[other].locator('#dareYes').count() === 0, 'only the chosen rat is asked to accept the dare');
     await H(() => { SQ.cfg.autoAdvanceSeconds = 1; }); await sleep(2500);
     check(await H(() => window.__host.phase) === 'reveal', 'the screen waits for the judge instead of moving on');
     await H(() => { SQ.cfg.autoAdvanceSeconds = 0; });
-    await P[wi].click('#dareYes'); await sleep(600);
-    check(await H(() => window.__host.dare.st) === 'accepted', 'accepting on the phone reaches the big screen');
-    await shot(P[wi], 'p-05e-dare-go');
+    // The chosen rat says no: the dare is up for grabs, and the first other phone to tap steals it.
+    await P[wi].click('#dareNo'); await sleep(700);
+    check(await H(() => window.__host.dare.st) === 'steal', 'a "no thanks" opens the dare for stealing');
+    await shot(host, '05e-dare-steal'); await shot(P[other], 'p-05e-dare-steal');
+    check(await P[wi].locator('#dareSteal').count() === 0 && await P[0].locator('#dareSteal').count() === 0 && await P[other].locator('#dareSteal').count() === 1, 'everyone but the one who passed and the birthday rat can steal');
+    const third = [7, 8, 9].find((i) => i !== wi && i !== other);
+    await P[other].click('#dareSteal'); await P[third].click('#dareSteal').catch(() => {}); await sleep(700);
+    check(await H(() => window.__host.dare.st) === 'accepted' && await H(() => window.__host.dare.name) === NAMES[other], `the first to tap steals the dare (${NAMES[other]})`);
+    await shot(host, '05e-dare-stolen'); await shot(P[other], 'p-05e-dare-go');
     // This dare has a clock and dance music: the host starts both, and the verdict stops them.
     await host.click('#dareStart'); await sleep(1500);
     const clock = Number(await host.textContent('#dareClock'));
     check(clock >= 27 && clock <= 29, `the host starts a 30-second clock for the dare (${clock} left)`);
     await shot(host, '05e-dare-clock');
     await host.click('#dareBox [data-st="done"]'); await sleep(700);
-    const whoAfter = (await byName(who)).score;
+    const whoAfter = (await byName(NAMES[other])).score;
     check(await host.locator('#dareClock').count() === 0, 'the verdict stops the clock');
     check(whoAfter === whoBefore + 1500, `a finished dare gives 1,500 points (${whoBefore} -> ${whoAfter})`);
     check((await byName('Cheddar Chad')).streak === 3, 'a dare leaves streaks alone');
-    await shot(host, '05e-dare-done'); await shot(P[wi], 'p-05e-dare-done');
+    await shot(host, '05e-dare-done'); await shot(P[other], 'p-05e-dare-done');
     // The wheel leans towards low scores and away from rats who already had a dare.
     const lean = await host.evaluate(() => {
       const list = [{ score: 9000 }, { score: 5000 }, { score: 1000 }, { score: 1000, dares: 1 }]; const n = [0, 0, 0, 0];

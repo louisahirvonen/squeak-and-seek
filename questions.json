@@ -270,7 +270,7 @@
       "correct": 1,
       "after": {
         "video": "media/pills.mp4",
-        "seconds": 30
+        "seconds": 27
       }
     },
     {
@@ -280,8 +280,8 @@
     },
     {
       "type": "dare",
-      "text": "Freestyledans i 30 sekunder.",
-      "seconds": 30,
+      "text": "Freestyledans i 20 sekunder.",
+      "seconds": 20,
       "music": true
     },
     {

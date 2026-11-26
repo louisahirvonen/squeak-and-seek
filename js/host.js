@@ -23,10 +23,10 @@
     phase: 'title', code: null, title: 'Squeak & Seek', questions: [], errors: [], loadError: null,
     players: {}, qi: -1, done: 0, answers: {}, counts: [], qStart: 0, limit: 20, endsAt: 0, seq: 0,
     prevScores: {}, prevRanks: {}, moves: false, fastest: null, lastTick: null,
-    game: 1, qKey: '', podStart: 0, podTimes: null, squeaks: 0, kicked: [], qWall: 0, bets: {}, wagers: {}, betKey: '', betEnds: 0, dare: null, texts: {}, extra: {}, votesFor: {},
+    game: 1, qKey: '', podStart: 0, podTimes: null, squeaks: 0, kicked: [], qWall: 0, bets: {}, wagers: {}, betKey: '', betEnds: 0, dare: null, texts: {}, extra: {}, votesFor: {}, picked: {},
   };
   let link = null; let heartbeat = null; let timerRaf = null; let introTimer = null; let ending = false;
-  let timers = []; let lastNext = 0; let offlineTimer = null; let offline = false; const lastReact = {}; let lastReactSound = 0; const lobbySeen = new Set(); const lastSqueak = {};
+  let timers = []; let lastNext = 0; let offlineTimer = null; let offline = false; let clipPlaying = false; let clipShown = ''; const lastReact = {}; let lastReactSound = 0; const lobbySeen = new Set(); const lastSqueak = {};
   // Timers that belong to the current phase: all cleared when the phase changes.
   const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.push(t); return t; };
   const avatar = (id, cls = '') => SQ.avatar(id, cls, !!S.players[id]?.bday);
@@ -64,7 +64,7 @@
   // ---------- networking ----------
   function connect() {
     if (link) link.close();
-    link = SQ.connect({ code: S.code, role: 'host', events: ['join', 'answer', 'squeak', 'leave', 'bet', 'react', 'dare', 'text'], onMessage, onStatus: (s) => {
+    link = SQ.connect({ code: S.code, role: 'host', events: ['join', 'answer', 'squeak', 'leave', 'bet', 'react', 'dare', 'text', 'steal'], onMessage, onStatus: (s) => {
       $('#barCode')?.classList.toggle('offline', s !== 'SUBSCRIBED');
       clearTimeout(offlineTimer);
       if (s === 'SUBSCRIBED') { if (offline) { offline = false; toast('Back online'); } broadcastAll(); }
@@ -97,7 +97,7 @@
         p.a = Object.keys(S.answers).map(SQ.hash); // whose answers have arrived: a phone resends until it sees itself here
       }
       if (S.phase === 'reveal') p.correct = cq.correct;
-      if (S.phase === 'reveal' && cq.type === 'dare' && S.dare) p.dare = S.dare.st === 'spin' ? { st: 'spin', pts: cq.points } : { n: S.dare.name, h: SQ.hash(S.dare.id), st: S.dare.st, pts: cq.points }; // no name while the wheel turns
+      if (S.phase === 'reveal' && cq.type === 'dare' && S.dare) p.dare = S.dare.st === 'spin' ? { st: 'spin', pts: cq.points } : { n: S.dare.name, h: SQ.hash(S.dare.id), st: S.dare.st, pts: cq.points, ...(S.dare.stolen ? { sto: 1 } : {}) }; // no name while the wheel turns
     }
     return p;
   }
@@ -119,7 +119,8 @@
         o.c = a ? a.correct : null; o.p = a ? a.points : 0;
         if (S.wagers[p.id]) o.wg = S.wagers[p.id];
         if (S.extra[p.id]) { o.c = true; o.p = S.extra[p.id]; } // points for something other than the answer given (the winning anonymous answer)
-        if (S.votesFor[p.id] !== undefined) o.v = S.votesFor[p.id]; // what the bet won (+) or cost (−)
+        if (S.votesFor[p.id] !== undefined) o.v = S.votesFor[p.id];
+        if (S.picked[p.id]) o.fav = S.picked[p.id]; // the room voted for this rat // what the bet won (+) or cost (−)
         if (!a && S.qWall && p.joinedAt > S.qWall) o.nw = 1; // walked in during this question
         if (a) { o.b = a.bonus || 0; o.t = Math.round(a.t * 10) / 10; if (S.fastest === p.id) o.f = 1; if (a.off !== undefined) o.off = a.off; }
       }
@@ -138,6 +139,7 @@
     if (event === 'react') return onReact(msg);
     if (event === 'dare') return onDare(msg);
     if (event === 'text') return onText(msg);
+    if (event === 'steal') return onSteal(msg);
   }
 
   // A guest tapped "Leave" on their phone: out of the lobby, or no longer waited for once the quiz is running.
@@ -179,7 +181,7 @@
   }
 
   function onAnswer({ id, q: qi, choice }) {
-    if (S.phase !== 'question' || qi !== S.qi || !S.players[id] || S.answers[id]) return;
+    if (S.phase !== 'question' || clipPlaying || qi !== S.qi || !S.players[id] || S.answers[id]) return;
     const cq = q();
     if (!Number.isInteger(choice)) return;
     if (cq.type === 'number' ? (choice < cq.min || choice > cq.max) : (choice < 0 || choice >= cq.options.length)) return;
@@ -254,6 +256,8 @@
   // the host (the judge) says whether it was done. The host's buttons also work without the phone's answer.
   const DARE_OVER = ['done', 'failed', 'declined'];
   const SPIN_MS = 6200;
+  const PICK_BONUS = 300; // for the guest who gets the most votes in a majority vote
+  const STEAL_S = 8; // after a "no thanks", how long the others get to grab the dare
   const WHEEL_COLORS = [SQ.C.lime, SQ.C.pink, SQ.C.sky, SQ.C.orange, SQ.C.lilac, SQ.C.mint];
   // Who is on the wheel: everyone who is here, except the birthday rat (she is the judge).
   function dareCandidates() {
@@ -272,7 +276,7 @@
     return list.length - 1;
   }
   function startDare() {
-    S.answers = {}; S.counts = []; S.fastest = null; S.wagers = {}; S.extra = {}; S.votesFor = {}; ending = false;
+    S.answers = {}; S.counts = []; S.fastest = null; S.wagers = {}; S.extra = {}; S.votesFor = {}; S.picked = {}; ending = false;
     S.prevScores = Object.fromEntries(Object.entries(S.players).map(([id, p]) => [id, p.score]));
     S.prevRanks = Object.fromEntries(ranked().map((p, i) => [p.id, i]));
     S.moves = Object.values(S.prevScores).some((v) => v > 0);
@@ -340,13 +344,26 @@
     later(tick, 200);
   }
   function stopDareClock() { const d = S.dare; if (!d || !d.ends) return; d.ends = 0; if (q().music) A.stopMusic(); }
+  function onSteal({ id }) {
+    const d = S.dare; const p = S.players[id];
+    if (S.phase !== 'reveal' || !d || d.st !== 'steal' || !p || id === d.id || p.bday) return;
+    d.id = id; d.name = p.name; d.st = 'accepted'; d.stolen = true; p.dares = (p.dares || 0) + 1; p.idle = 0; persist();
+    A.sfx.slam(); flash(); later(() => A.sfx.fanfare(), 150);
+    paintDare(); broadcastAll();
+  }
   function onDare({ id, ok }) { if (S.phase === 'reveal' && S.dare && S.dare.id === id && S.dare.st === 'asked') setDare(ok ? 'accepted' : 'declined'); }
   function setDare(st) {
     const d = S.dare; const cq = q(); if (!d || S.phase !== 'reveal' || d.st === 'spin' || DARE_OVER.includes(d.st)) return;
+    // "No thanks" is not the end: once per dare, everyone else gets a few seconds to steal it. First tap wins.
+    if (st === 'declined' && !d.stealTried && Object.entries(S.players).some(([id, p]) => id !== d.id && !p.bday && !away(p))) {
+      d.stealTried = true; st = 'steal';
+      later(() => { if (S.dare === d && d.st === 'steal') setDare('declined'); }, STEAL_S * 1000);
+      const t0 = performance.now(); const tick = () => { if (S.dare !== d || d.st !== 'steal') return; const el = $('#stealSecs'); if (el) el.textContent = Math.max(0, Math.ceil(STEAL_S - (performance.now() - t0) / 1000)); later(tick, 250); }; later(tick, 250);
+    }
     d.st = st;
     if (DARE_OVER.includes(st)) stopDareClock();
     if (st === 'done' && S.players[d.id]) { S.players[d.id].score += cq.points; S.players[d.id].reachedAt = Date.now(); persist(); SQ.confetti(2600); A.sfx.fanfare(); }
-    else if (st === 'accepted') A.sfx.chime(); else A.sfx.womp();
+    else if (st === 'accepted') A.sfx.chime(); else if (st === 'steal') A.sfx.alarm(); else A.sfx.womp();
     paintDare(); broadcastAll();
     if (DARE_OVER.includes(st) && !$('#btnHold')) autoNext(); // the screen waited for the verdict; now it may move on
   }
@@ -354,11 +371,11 @@
     const box = $('#dareBox'); const d = S.dare; if (!box || !d) return;
     const pts = fmt(q().points);
     if (d.st === 'spin') { box.className = 'dare-box dare-spin'; box.innerHTML = '<div class="dare-who"><div><small>The wheel decides</small><strong>Who will it be?</strong><span>Anyone could get it.</span></div></div>'; return; }
-    const line = { asked: 'Waiting for the answer on their phone&hellip;', accepted: `Accepted. ${esc(NAME)} is the judge.`, done: `Done. +${pts} points.`, failed: 'Not quite. No points.', declined: 'Said no thanks.' }[d.st];
+    const line = { asked: 'Waiting for the answer on their phone&hellip;', steal: `Said no thanks. <b>Anyone can steal it on their phone!</b> <b id="stealSecs">${STEAL_S}</b>`, accepted: `${d.stolen ? 'Stolen!' : 'Accepted.'} ${esc(NAME)} is the judge.`, done: `Done. +${pts} points.`, failed: 'Not quite. No points.', declined: 'Said no thanks.' }[d.st];
     box.className = `dare-box pop-in dare-${d.st}`;
-    box.innerHTML = `<div class="dare-who">${avatar(d.id)}<div><small>The dare goes to</small><strong>${esc(d.name)}</strong><span>${line}</span></div></div>
-      ${DARE_OVER.includes(d.st) || !q().seconds ? '' : d.ends ? `<div class="dare-clock running"><b id="dareClock">${Math.max(0, Math.ceil((d.ends - performance.now()) / 1000))}</b><span>seconds left</span></div>` : d.timeUp ? '<div class="dare-clock"><b>0</b><span>Time is up</span></div>' : `<button class="btn dark small dare-start" id="dareStart">Start the clock &middot; ${q().seconds} s${q().music ? ' + music' : ''}</button>`}
-      ${DARE_OVER.includes(d.st) ? '' : `<div class="dare-btns"><button class="btn primary small" data-st="done">Done &middot; +${pts}</button><button class="btn ghost small" data-st="failed">Failed</button><button class="btn ghost small" data-st="declined">Declined</button></div>`}`;
+    box.innerHTML = `<div class="dare-who">${avatar(d.id)}<div><small>${d.stolen ? 'Stolen by' : 'The dare goes to'}</small><strong>${esc(d.name)}</strong><span>${line}</span></div></div>
+      ${DARE_OVER.includes(d.st) || d.st === 'steal' || !q().seconds ? '' : d.ends ? `<div class="dare-clock running"><b id="dareClock">${Math.max(0, Math.ceil((d.ends - performance.now()) / 1000))}</b><span>seconds left</span></div>` : d.timeUp ? '<div class="dare-clock"><b>0</b><span>Time is up</span></div>' : `<button class="btn dark small dare-start" id="dareStart">Start the clock &middot; ${q().seconds} s${q().music ? ' + music' : ''}</button>`}
+      ${d.st === 'steal' ? '<div class="dare-btns"><button class="btn ghost small" data-st="declined">No takers</button></div>' : DARE_OVER.includes(d.st) ? '' : `<div class="dare-btns"><button class="btn primary small" data-st="done">Done &middot; +${pts}</button><button class="btn ghost small" data-st="failed">Failed</button><button class="btn ghost small" data-st="declined">Declined</button></div>`}`;
     box.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', () => setDare(b.dataset.st)));
     $('#dareStart')?.addEventListener('click', startDareClock);
   }
@@ -465,7 +482,7 @@
   }
 
   function go(phase) {
-    S.phase = phase;
+    S.phase = phase; clipPlaying = false;
     clearTimeout(introTimer); cancelAnimationFrame(timerRaf);
     timers.forEach(clearTimeout); timers = [];
     delete document.body.dataset.urgent; A.hurry(false);
@@ -506,7 +523,7 @@
 
   function startQuestion() {
     const cq = q();
-    S.dare = null; S.extra = {}; S.votesFor = {};
+    S.dare = null; S.extra = {}; S.votesFor = {}; S.picked = {};
     if (['vote', 'dare', 'write'].includes(cq.type)) cq.correct = []; // decided by the room when the question ends
     if (cq.guests) cq.options = Object.entries(S.players).sort((x, y) => x[1].joinedAt - y[1].joinedAt).map(([pid, p]) => ({ label: p.name, pid, bd: p.bday }));
     S.limit = cq.timeLimit; S.answers = {};
@@ -534,7 +551,14 @@
   }
 
   function endQuestion() {
-    if (S.phase !== 'question' || ending) return;
+    if (S.phase !== 'question' || ending || clipPlaying) return;
+    // A question with a clip: once the answers are in, the clip plays first and the right answer waits for it.
+    if (q().after && clipShown !== S.qKey) {
+      clipShown = S.qKey; clipPlaying = true;
+      cancelAnimationFrame(timerRaf); A.stopMusic(); delete document.body.dataset.urgent; A.hurry(false);
+      S.endsAt = performance.now(); const el = $('#timeLeft'); if (el) el.textContent = 0; broadcastState(); // answering is closed
+      return later(() => playAfter(q(), () => { clipPlaying = false; endQuestion(); }), 500);
+    }
     ending = true;
     A.stopMusic();
     const cq = q();
@@ -561,6 +585,8 @@
       const top = Math.max(0, ...Object.values(tally));
       cq.correct = top >= 2 || answeredCount() === 1 ? Object.keys(tally).filter((k) => tally[k] === top).map(Number) : [];
       Object.values(S.answers).forEach((a) => { a.correct = cq.correct.includes(a.choice); a.base = a.correct ? 1000 : 0; a.vote = 1; });
+      // In a vote for a guest, the rat the room picked gets a little something too.
+      if (cq.guests) cq.correct.forEach((i) => { const p = S.players[cq.options[i].pid]; if (p) { p.score += PICK_BONUS; S.picked[cq.options[i].pid] = PICK_BONUS; } });
     }
     // Anonymous answers: the answer with the most votes wins and its writer (or writers, on a tie) gets 1000.
     if (cq.type === 'write') {
@@ -789,7 +815,7 @@
     stage.innerHTML = `
       <section class="intro ${cq.media ? 'has-media' : ''}">
         ${deco('intro')}
-        <p class="kicker big">${S.qi === finalIdx() && realTotal() > 1 ? 'Final question' : qLabel()}${isDouble() ? ' <b class="intro-stamp">Double points</b>' : isBetQ() ? ' <b class="intro-stamp">The bets are in</b>' : cq.type === 'vote' ? ' <b class="intro-stamp">Majority wins</b>' : cq.type === 'dare' ? ` <b class="intro-stamp">${fmt(cq.points)} points</b>` : cq.type === 'write' ? ' <b class="intro-stamp">Write your own answer</b>' : ''}</p>
+        <p class="kicker big">${S.qi === finalIdx() && realTotal() > 1 ? 'Final question' : qLabel()}${isDouble() ? ' <b class="intro-stamp">Double points</b>' : isBetQ() ? ' <b class="intro-stamp">The bets are in</b>' : cq.type === 'vote' ? ' <b class="intro-stamp">Vote like the majority to score</b>' : cq.type === 'dare' ? ` <b class="intro-stamp">${fmt(cq.points)} points</b>` : cq.type === 'write' ? ' <b class="intro-stamp">Write your own answer</b>' : ''}</p>
         <h2 class="q-display">${esc(cq.text)}</h2>
         ${mediaHTML(cq, 'large', true)}
         ${cq.media?.video ? '' : '<div class="intro-bar"><span></span></div>'}
@@ -862,7 +888,7 @@
     const middle = cq.type === 'photo' ? '' : (mediaHTML(cq, 'medium', false) || `<div class="mascot mid bob">${birthdayRat()}</div>`);
     stage.innerHTML = `
       <section class="question ${cq.type} ${cq.type === 'write' ? 'voting' : ''}">
-        ${qHead(cq, `${isDouble() ? '<span class="q-double">Double points</span>' : isBetQ() ? '<span class="q-double">Bets are in</span>' : cq.type === 'vote' ? '<span class="q-double">Majority wins</span>' : cq.type === 'write' ? '<span class="q-double">Vote for the best</span>' : ''}<div class="timer" id="timer"><div class="ring" id="timerRing" style="--p:1"></div><span id="timeLeft">${cq.timeLimit}</span></div>`)}
+        ${qHead(cq, `${isDouble() ? '<span class="q-double">Double points</span>' : isBetQ() ? '<span class="q-double">Bets are in</span>' : cq.type === 'vote' ? '<span class="q-double">Vote like the majority</span>' : cq.type === 'write' ? '<span class="q-double">Vote for the best</span>' : ''}<div class="timer" id="timer"><div class="ring" id="timerRing" style="--p:1"></div><span id="timeLeft">${cq.timeLimit}</span></div>`)}
         <div class="q-body">
           <div class="q-visual">${middle}</div>
           <div class="answered"><span id="answered">0 / ${playerCount()}</span><small>answered</small><div class="q-faces" id="qFaces"></div><p class="q-waiting" id="qWaiting"></p><button class="btn ghost small" id="btnSkip">End now</button></div>
@@ -882,7 +908,9 @@
     const f = S.fastest && S.players[S.fastest];
     const wi = cq.type === 'write' ? cq.correct.map((i) => cq.options[i]).filter((o) => S.players[o.pid]) : [];
     const wrote = wi.length ? `<div class="rv-fast rv-late">${avatar(wi[0].pid)}<div><small>The room's favourite</small><strong>${esc(wi.map((o) => S.players[o.pid].name).join(' & '))}</strong><span>+1,000</span></div></div>` : '';
-    const fastest = cq.type === 'write' ? wrote : f ? `<div class="rv-fast rv-late">${avatar(S.fastest)}<div><small>Fastest paw</small><strong>${esc(f.name)}</strong><span>${S.answers[S.fastest].t.toFixed(1)} s</span></div></div>` : '';
+    const pk = cq.guests && cq.type === 'vote' ? cq.correct.map((i) => cq.options[i]).filter((o) => S.players[o.pid]) : [];
+    const pick = pk.length ? `<div class="rv-fast rv-late">${avatar(pk[0].pid)}<div><small>The room's pick</small><strong>${esc(pk.map((o) => o.label).join(' & '))}</strong><span>+${PICK_BONUS}</span></div></div>` : '';
+    const fastest = pick ? pick : cq.type === 'write' ? wrote : f ? `<div class="rv-fast rv-late">${avatar(S.fastest)}<div><small>Fastest paw</small><strong>${esc(f.name)}</strong><span>${S.answers[S.fastest].t.toFixed(1)} s</span></div></div>` : '';
     const won = Object.entries(S.wagers).sort((x, y) => y[1] - x[1])[0]; const lost = Object.entries(S.wagers).sort((x, y) => x[1] - y[1])[0];
     const betLine = (label, e) => (e && S.players[e[0]] ? `<div class="rv-fast rv-bet rv-late">${avatar(e[0])}<div><small>${label}</small><strong>${esc(S.players[e[0]].name)}</strong><span>${e[1] > 0 ? '+' : '&minus;'}${fmt(Math.abs(e[1]))}</span></div></div>` : '');
     const bets = (won && won[1] > 0 ? betLine('Biggest bet won', won) : '') + (lost && lost[1] < 0 ? betLine('Biggest bet lost', lost) : '');
@@ -897,7 +925,7 @@
         ${answersHTML(cq, true)}
       </section>`;
     $('#btnNext').addEventListener('click', next);
-    if (cq.after) later(() => playAfter(cq, autoNext), REVEAL_MS + 2800); else autoNext();
+    autoNext();
   }
 
   // The clip is fetched while the question is still being asked, so it starts at once when its moment comes.
@@ -908,17 +936,17 @@
     return clips[src];
   }
 
-  // A clip after the answer: it takes over the screen once the right answer has had its moment, plays (for at most
-  // "seconds"), and only then does the screen start counting down to the leaderboard.
+  // A question's clip: it takes over the screen once the answers are in, plays (for at most "seconds"), and only
+  // then is the right answer revealed.
   function playAfter(cq, done) {
-    if (S.phase !== 'reveal' || q() !== cq) return;
+    const phase0 = S.phase; if (q() !== cq) return;
     A.stopMusic();
     const box = document.createElement('div'); box.className = 'after-video'; box.id = 'afterVideo';
     box.innerHTML = '<button class="btn ghost small" id="btnSkipAfter">Skip video</button>';
     const v = clipFor(cq); v.currentTime = 0; box.prepend(v);
     stage.appendChild(box);
     v.muted = A.muted; let over = false;
-    const end = () => { if (over) return; over = true; v.pause(); box.classList.add('out'); setTimeout(() => box.remove(), 350); if (S.phase === 'reveal' && q() === cq) done(); };
+    const end = () => { if (over) return; over = true; v.pause(); box.classList.add('out'); setTimeout(() => box.remove(), 350); if (S.phase === phase0 && q() === cq) done(); };
     v.addEventListener('ended', end);
     v.addEventListener('error', () => later(end, 800));
     if (cq.after.seconds) v.addEventListener('timeupdate', () => { if (v.currentTime >= cq.after.seconds) end(); });

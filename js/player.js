@@ -122,7 +122,7 @@
   // ---------- screens ----------
   function render(fromResults) {
     const s = lastState; if (!s) return;
-    const key = `${s.phase}:${s.q}:${me.name}:${s.phase === 'reveal' || s.phase === 'leaderboard' || s.phase === 'podium' ? ((mine ? [mine.phase, mine.q, mine.s, mine.k, mine.c].join('/') : '') + (s.dare ? s.dare.st : '')) : s.phase === 'lobby' && mine ? mine.s : ''}`;
+    const key = `${s.phase}:${s.q}:${me.name}:${s.phase === 'reveal' || s.phase === 'leaderboard' || s.phase === 'podium' ? ((mine ? [mine.phase, mine.q, mine.s, mine.k, mine.c].join('/') : '') + (s.dare ? s.dare.st + (s.dare.h || '') : '')) : s.phase === 'lobby' && mine ? mine.s : ''}`;
     if (key === shownKey) return;
     shownKey = key;
     clearInterval(countdown); clearTimeout(holdTimer); clearInterval(stepTimer); clearTimeout(stepTimer);
@@ -183,7 +183,7 @@
       <section class="p-center">
         <p class="kicker">${s.type === 'dare' ? 'Surprise' : (s.no || s.q + 1) === (s.of || s.total) && s.total > 1 ? 'Final question' : `Question ${pad(s.no || s.q + 1)} / ${pad(s.of || s.total)}`}</p>
         <h2 class="p-title">${s.type === 'dare' ? 'A dare' : s.dbl ? 'Double points' : s.wg ? 'The bets are in' : s.video ? 'Watch the video' : 'Get ready'}</h2>
-        <p class="p-lede">${s.video ? 'It plays on the big screen. Answers come right after.' : s.type === 'write' ? 'You write your own answer for this one. Nobody sees who wrote what.' : s.type === 'dare' ? 'The wheel picks one of you. Eyes on the big screen.' : s.type === 'vote' ? 'A vote: the most popular answer wins.' : 'Read the question on the big screen.'}${s.dbl ? ' This one counts twice.' : s.wg ? ' Your bet rides on this one.' : ''}</p>
+        <p class="p-lede">${s.video ? 'It plays on the big screen. Answers come right after.' : s.type === 'write' ? 'You write your own answer for this one. Nobody sees who wrote what.' : s.type === 'dare' ? 'The wheel picks one of you. Eyes on the big screen.' : s.type === 'vote' ? 'A vote. You score if you pick what most of the room picks.' : 'Read the question on the big screen.'}${s.dbl ? ' This one counts twice.' : s.wg ? ' Your bet rides on this one.' : ''}</p>
       </section>`;
   }
 
@@ -257,7 +257,7 @@
       // Vote for a guest (not yourself). The answer with the most votes wins.
       screen.innerHTML = `${header()}${timerRow}
         <section class="p-votes">
-          <p class="kicker">Majority wins. Vote for a rat.</p>
+          <p class="kicker">Pick who most of the room will pick</p>
           <div class="p-vote-list">${s.opts.map((o, i) => (o.pid === me.id ? '' : `<button class="p-vote" data-i="${i}">${SQ.avatar(o.pid, '', !!o.bd)}<span>${esc(o.label)}</span></button>`)).join('')}</div>
         </section>`;
       startBar();
@@ -323,7 +323,7 @@
   function pReveal(s) {
     const r = mine && mine.q === s.q && mine.phase === 'reveal' ? mine : null;
     const wg = r ? r.wg || 0 : 0; // what the bet on the final question won or cost
-    const before = r ? r.s - (r.p || 0) - wg : mine ? mine.s : 0;
+    const before = r ? r.s - (r.p || 0) - wg - (r.fav || 0) : mine ? mine.s : 0;
     const waiting = () => { screen.innerHTML = `${header(before)}<section class="p-center"><div class="loader"><span></span><span></span><span></span></div><p class="p-lede">Checking answers&hellip;</p></section>`; };
     if (!r) return waiting();
     const show = () => {
@@ -351,7 +351,7 @@
       if (wg > 0) { title = `+${fmt(r.p + wg)}`; sub = `Your bet paid off: +${fmt(wg)}.`; }
       if (wg < 0) { title = `&minus;${fmt(-wg)}`; sub = 'There goes your bet.'; }
       document.body.dataset.result = cls;
-      const extra = [moveLine(r), gapLine(r)].filter(Boolean);
+      const extra = [r.fav ? `The room picked you: +${fmt(r.fav)}` : '', moveLine(r), gapLine(r)].filter(Boolean);
       screen.innerHTML = `${header(before)}
         <section class="p-center p-result ${cls}">
           <p class="kicker">${kicker}</p>
@@ -374,15 +374,21 @@
     const d = s.dare; const me1 = d && d.h === SQ.hash(me.id); const pts = d ? fmt(d.pts) : '';
     let kicker = 'The dare', title = 'Nobody', sub = 'Nobody has to this time.', cls = 'none', btns = '';
     if (d && d.st === 'spin') { kicker = 'The wheel is spinning'; title = 'Who?'; sub = 'It could be you.'; }
+    else if (d && d.st === 'steal') {
+      // The chosen rat said no: everyone else can grab the dare. First tap wins.
+      if (me1) { kicker = 'You passed'; title = 'Up for grabs'; sub = 'Someone else may steal your dare.'; }
+      else if (SQ.isBirthday(me.name) || (mine && mine.bd)) { kicker = `${esc(d.n)} said no`; title = 'Any takers?'; sub = 'You are the judge, so this one is not for you.'; }
+      else { kicker = `${esc(d.n)} said no`; title = 'Steal it?'; sub = `First to tap gets the dare and the ${pts} points.`; btns = '<div class="p-dare-btns"><button class="btn primary big" id="dareSteal">Steal the dare</button></div>'; }
+    }
     else if (d && me1) {
       ({ asked: () => { kicker = 'The wheel has chosen'; title = 'It\'s you'; sub = `Do the dare on the big screen for ${pts} points. ${esc(NAME)} is the judge.`; btns = '<div class="p-dare-btns"><button class="btn primary big" id="dareYes">I\'ll do it</button><button class="btn ghost" id="dareNo">No thanks</button></div>'; },
-        accepted: () => { kicker = 'Dare accepted'; title = 'Go!'; sub = `${esc(NAME)} is watching.`; },
+        accepted: () => { kicker = d.sto ? 'You stole the dare' : 'Dare accepted'; title = 'Go!'; sub = `${esc(NAME)} is watching.`; },
         done: () => { cls = 'right'; kicker = 'Dare done'; title = `+${pts}`; sub = 'Worth it.'; },
         failed: () => { cls = 'wrong'; kicker = 'The judge has spoken'; title = 'Not quite'; sub = 'No points, but full marks for trying.'; },
         declined: () => { kicker = 'Dare declined'; title = 'Passed'; sub = 'No points lost.'; } }[d.st] || (() => {}))();
     } else if (d) {
       title = esc(d.n);
-      ({ asked: () => { kicker = 'The dare goes to'; sub = 'Will they do it?'; }, accepted: () => { kicker = 'Dare accepted by'; sub = 'Eyes on them.'; },
+      ({ asked: () => { kicker = 'The dare goes to'; sub = 'Will they do it?'; }, accepted: () => { kicker = d.sto ? 'Dare stolen by' : 'Dare accepted by'; sub = 'Eyes on them.'; },
         done: () => { kicker = 'Dare done by'; sub = `+${pts} points.`; }, failed: () => { kicker = 'So close'; sub = 'The judge said no.'; },
         declined: () => { kicker = 'No thanks, said'; sub = 'The dare goes undone.'; } }[d.st] || (() => {}))();
     }
@@ -397,6 +403,7 @@
       </section>`;
     if (r) countScore(r.s);
     const answer = (ok) => { buzz(30); if (link) link.send('dare', { id: me.id, ok }).catch(() => {}); screen.querySelectorAll('.p-dare-btns button').forEach((b) => { b.disabled = true; }); };
+    $('#dareSteal')?.addEventListener('click', (e) => { buzz(30); e.currentTarget.disabled = true; if (link) link.send('steal', { id: me.id }).catch(() => {}); });
     $('#dareYes')?.addEventListener('click', () => answer(true)); $('#dareNo')?.addEventListener('click', () => answer(false));
     if (me1 && d.st === 'asked') buzz([60, 60, 60, 60, 120]);
     if (me1 && d.st === 'done') SQ.confetti(2500);
