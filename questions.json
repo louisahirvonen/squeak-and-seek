@@ -32,7 +32,8 @@
       "min": 0,
       "max": 15,
       "unit": "år",
-      "correct": 6
+      "correct": 6,
+      "image": "media/black-dress.jpg"
     },
     {
       "text": "Vad jobbar Louisa med, egentligen?",
@@ -120,7 +121,8 @@
         "Komma in i en bra städrutin",
         "Gå ner i split"
       ],
-      "correct": 3
+      "correct": 3,
+      "image": "media/tall-hat.jpg"
     },
     {
       "type": "dare",
@@ -145,7 +147,8 @@
         "Druvor",
         "Tomatjuice"
       ],
-      "correct": 2
+      "correct": 2,
+      "image": "media/selfie.jpg"
     },
     {
       "type": "write",
@@ -230,7 +233,8 @@
         0,
         1,
         2
-      ]
+      ],
+      "image": "media/night.jpg"
     },
     {
       "type": "write",
