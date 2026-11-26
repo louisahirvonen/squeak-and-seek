@@ -73,6 +73,17 @@
       ]
     },
     {
+      "text": "Vad jobbar Louisa med, egentligen?",
+      "timeLimit": 30,
+      "options": [
+        "Finjusterar språkmodeller på svenska lagtexter",
+        "Bygger datapipelines i Snowflake åt en bank",
+        "Bygger AI-agenter med LangGraph och RAG",
+        "Automatiserar testning av mobilappar"
+      ],
+      "correct": 2
+    },
+    {
       "type": "photo",
       "text": "Vilket är Louisas signature move?",
       "options": [
@@ -160,6 +171,15 @@
         "Gå ner i split"
       ],
       "correct": 3
+    },
+    {
+      "type": "number",
+      "text": "Hur många minuter behöver Louisa för att \"get ready\" på morgonen?",
+      "min": 0,
+      "max": 90,
+      "unit": "minuter",
+      "scoring": "closest",
+      "correct": 26
     },
     {
       "type": "dare",
