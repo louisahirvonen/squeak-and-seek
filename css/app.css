@@ -763,3 +763,56 @@ body.player[data-phase="reveal"] .screen, body.player[data-phase="leaderboard"] 
 .dare-clock b { font-family: var(--display); font-variation-settings: 'wdth' 80; font-weight: 800; font-size: clamp(2.6rem, 8vh, 5rem); line-height: .9; letter-spacing: -.04em; color: var(--lime); font-variant-numeric: tabular-nums; }
 .dare-clock span { font-weight: 700; text-transform: uppercase; letter-spacing: .14em; font-size: .8rem; opacity: .8; }
 .dare-clock.running b { animation: pulse 1s infinite; }
+
+/* ---------- a dare approaches ---------- */
+.flash { position: fixed; inset: 0; z-index: 40; background: #fff; pointer-events: none; animation: flashOut .55s ease-out forwards; }
+@keyframes flashOut { 0% { opacity: .95; } 100% { opacity: 0; } }
+body[data-phase="intro"][data-dare][data-tone] { --bg: var(--ink); --fg: var(--paper); --soft: rgba(244,241,234,.12); }
+body[data-dare] .brand em { color: var(--lime); }
+.dare-intro { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-height: 74vh; padding: 0 2vw; }
+.stage > section.dare-intro > .di-copy { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; animation: diShake .5s .05s both, diShake .4s .55s both, diShake .4s .9s both, diShake .5s 3.2s both; }
+@keyframes diShake { 0%,100% { transform: none; } 15% { transform: translate(-1.4vw, .8vh) rotate(-.6deg); } 35% { transform: translate(1.2vw, -.9vh) rotate(.5deg); } 55% { transform: translate(-.8vw, .5vh); } 75% { transform: translate(.5vw, -.3vh); } }
+/* warning stripes sliding past, top and bottom */
+.stage > section.dare-intro > .di-stripes { position: absolute; inset: -2vh -4vw -4vh; z-index: 0; background: radial-gradient(circle at 76% 52%, rgba(255,95,162,.4), transparent 50%); }
+.stage > section.dare-intro > .di-bars { position: absolute; inset: -2vh -4vw -4vh; z-index: 1; overflow: hidden; pointer-events: none; }
+.di-bars span { position: absolute; left: 0; right: 0; height: 8vh; background: repeating-linear-gradient(-55deg, var(--lime) 0 5vh, var(--ink) 5vh 10vh); background-size: 12.21vh 100%; animation: diSlide .5s linear infinite, diBarIn .35s cubic-bezier(.2,1.3,.4,1) both; }
+.di-bars span:first-child { top: 0; }
+.di-bars span:last-child { bottom: 0; animation-direction: reverse, normal; }
+@keyframes diSlide { to { background-position: 12.21vh 0; } }
+@keyframes diBarIn { from { height: 0; } }
+.di-warn { position: relative; z-index: 2; display: flex; gap: 2.4vw; margin: 0 0 1.5vh; font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .3em; font-size: clamp(1rem, 2vw, 2rem); color: var(--coral); animation: diBlink .32s steps(2, jump-none) 9, diUp .9s 3.05s cubic-bezier(.3,0,.2,1) forwards; }
+@keyframes diBlink { 0% { opacity: 1; } 100% { opacity: .15; } }
+.di-title { position: relative; z-index: 2; margin: 0; display: flex; flex-direction: column; font-family: var(--display); font-variation-settings: 'wdth' 75; font-weight: 800; font-style: italic; text-transform: uppercase; line-height: .82; letter-spacing: -.04em; font-size: clamp(4rem, 21vh, 15rem); transform: skewX(-8deg); transform-origin: left center; animation: diUp .9s 3.05s cubic-bezier(.3,0,.2,1) forwards; }
+.di-title span { display: block; text-shadow: .5vh .5vh 0 var(--pink); }
+.di-title span:first-child { color: var(--lime); animation: diSlamL .32s .5s cubic-bezier(.2,1.4,.3,1) both; }
+.di-title span:last-child { animation: diSlamR .32s .85s cubic-bezier(.2,1.4,.3,1) both; }
+@keyframes diSlamL { 0% { transform: translateX(-110vw) scale(1.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes diSlamR { 0% { transform: translateX(110vw) scale(1.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+/* once the task lands, the title makes room for it */
+@keyframes diUp { to { transform: translateY(-13vh) scale(.5) skewX(-8deg); } }
+.di-warn { transform-origin: left center; }
+/* the mystery rat */
+.stage > section.dare-intro > .di-who { position: absolute; z-index: 1; right: 3vw; top: 50%; width: 46vh; height: 46vh; margin-top: -23vh; display: grid; place-items: center; animation: diWho .7s 1.5s cubic-bezier(.2,1.5,.3,1) both; }
+.di-spot { position: absolute; inset: 0; border-radius: 50%; background: var(--pink); box-shadow: 0 0 0 1.4vh var(--ink), 0 0 0 2.4vh var(--lime); }
+.di-sil { position: relative; width: 62%; filter: brightness(0); animation: diBob .5s ease-in-out infinite alternate; }
+.di-sil svg { display: block; width: 100%; height: auto; }
+.di-who b { position: absolute; font-family: var(--display); font-weight: 800; font-size: 20vh; line-height: 1; color: var(--paper); text-shadow: 0 .6vh 0 var(--ink); top: 34%; animation: pulse .4s infinite; }
+@keyframes diWho { 0% { transform: scale(0) rotate(-200deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes diBob { to { transform: translateY(-1.4vh) rotate(3deg); } }
+/* the task */
+.di-task { position: relative; z-index: 2; max-width: 56vw; margin-top: -9vh; padding: 2.4vh 2vw 2.6vh; border-radius: 26px; background: var(--paper); color: var(--ink); box-shadow: 1vh 1vh 0 var(--lime); transform: rotate(-1.5deg); animation: diTask .4s 3.2s cubic-bezier(.2,1.4,.3,1) both; }
+.di-task small { font-weight: 800; text-transform: uppercase; letter-spacing: .16em; font-size: clamp(.8rem, 1.2vw, 1.2rem); color: #C2185B; }
+.di-task p { margin: .8vh 0 .6vh; font-family: var(--display); font-variation-settings: 'wdth' 82; font-weight: 800; font-size: clamp(1.8rem, 5.4vh, 4.2rem); line-height: .98; letter-spacing: -.03em; }
+.di-task span { font-weight: 700; font-size: clamp(.9rem, 1.4vw, 1.4rem); opacity: .75; }
+@keyframes diTask { 0% { transform: translateY(70vh) rotate(8deg) scale(1.3); opacity: 0; } 100% { transform: rotate(-1.5deg); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .di-copy, .di-warn, .di-title, .di-title span, .di-who, .di-sil, .di-who b, .di-task, .di-bars span { animation: none !important; }
+  .di-title { font-size: clamp(3rem, 12vh, 8rem); }
+  .di-task { margin-top: 3vh; }
+}
+/* phone */
+body.player[data-result="dare"] { --bg: var(--ink); --fg: var(--paper); --soft: rgba(244,241,234,.14); }
+.p-dare-in { background: repeating-linear-gradient(-55deg, rgba(210,246,90,.16) 0 18px, transparent 18px 36px); }
+.p-dare-in .p-warn { color: var(--coral); letter-spacing: .3em; animation: diBlink .32s steps(2, jump-none) 9; }
+.p-dare-in .p-title { font-style: italic; text-transform: uppercase; color: var(--lime); text-shadow: 4px 4px 0 var(--pink); font-size: 4rem; transform: skewX(-8deg); transform-origin: left; }
+.p-slam { animation: diSlamL .32s .25s cubic-bezier(.2,1.4,.3,1) both; }

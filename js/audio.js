@@ -61,6 +61,9 @@
     pop() { noise({ dur: 0.08, gain: 0.08, from: 1500, to: 600, q: 0.8 }); },
     horn() { [0, 0.18].forEach((at, i) => tone({ type: 'sawtooth', f0: i ? 523 : 392, f1: i ? 540 : 400, dur: i ? 0.6 : 0.16, gain: 0.07, at, filter: 2200 })); noise({ dur: 0.15, gain: 0.1, from: 2000, to: 500, at: 0.85, q: 0.7 }); },
     go() { tone({ type: 'triangle', f0: 660, dur: 0.12, gain: 0.07 }); tone({ type: 'triangle', f0: 990, dur: 0.18, gain: 0.07, at: 0.1 }); },
+    // A dare bursts in: a siren that whoops three times, and a heavy thud for each line that lands.
+    alarm() { [0, 0.5, 1].forEach((at) => { tone({ type: 'sawtooth', f0: 420, f1: 960, dur: 0.44, gain: 0.085, at, filter: 2600 }); tone({ type: 'square', f0: 210, f1: 480, dur: 0.44, gain: 0.03, at, filter: 1200 }); }); },
+    slam() { tone({ type: 'sine', f0: 170, f1: 38, dur: 0.42, gain: 0.34 }); tone({ type: 'sawtooth', f0: 90, f1: 45, dur: 0.3, gain: 0.08, filter: 500 }); noise({ dur: 0.28, gain: 0.16, from: 3200, to: 180, q: 0.7 }); },
     timeUp() { tone({ type: 'triangle', f0: 520, f1: 500, dur: 0.4, gain: 0.07 }); },
   };
 

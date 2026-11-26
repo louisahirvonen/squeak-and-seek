@@ -9,6 +9,7 @@
   const A = SQAudio;
   const STORE = 'squeak-host';
   const INTRO_MS = 4000;
+  const DARE_INTRO_MS = 7000; // a dare makes an entrance: alarm, title, silhouette, then the task
   const LATE_GRACE_S = 1.2;
   const NAME = SQ.cfg.birthdayName || 'Louisa';
   const WAGER_S = 20; // how long the betting round before the final question stays open
@@ -285,7 +286,7 @@
     for (let j = 0; j < 34; j++) later(() => A.sfx.tick(1 + (j % 2)), Math.round(SPIN_MS * Math.pow(j / 34, 2.2)));
     later(() => {
       S.dare.st = 'asked'; if (S.players[S.dare.id]) { S.players[S.dare.id].dares = (S.players[S.dare.id].dares || 0) + 1; persist(); }
-      A.sfx.chime(); $('#wheelWrap')?.classList.add('landed');
+      A.sfx.slam(); flash(); later(() => A.sfx.chime(), 180); $('#wheelWrap')?.classList.add('landed');
       paintDare(); broadcastAll();
     }, SPIN_MS + 250);
   }
@@ -489,9 +490,14 @@
       v.play().catch(() => { v.muted = true; v.play().catch(() => setTimeout(done, 1500)); });
     } else {
       A.stopMusic();
-      introTimer = setTimeout(cq.type === 'write' ? startWrite : cq.type === 'dare' ? startDare : startQuestion, INTRO_MS + (cq.type === 'dare' ? 1500 : 0));
+      introTimer = setTimeout(cq.type === 'write' ? startWrite : cq.type === 'dare' ? startDare : startQuestion, cq.type === 'dare' ? DARE_INTRO_MS : INTRO_MS);
       if (cq.type !== 'dare') [3, 2, 1].forEach((n) => later(() => A.sfx.blip(3 - n), INTRO_MS - n * 1000));
-      else later(() => A.sfx.fanfare(), 250);
+      else {
+        A.sfx.alarm();
+        [550, 900, 3200].forEach((ms) => later(() => { A.sfx.slam(); flash(); }, ms));
+        later(() => A.sfx.fanfare(), 3300);
+        [3, 2, 1].forEach((n) => later(() => A.sfx.blip(3 - n), DARE_INTRO_MS - n * 1000));
+      }
       if (isDouble()) later(() => A.sfx.fanfare(), 250);
     }
   }
@@ -637,6 +643,7 @@
     stage.className = `stage phase-${S.phase}`;
     document.body.dataset.phase = S.phase;
     document.body.dataset.tone = S.qi >= 0 ? TONES[S.qi % TONES.length] : 'pink';
+    document.body.toggleAttribute('data-dare', S.phase === 'intro' && q()?.type === 'dare');
     wipe(oldBg);
     const prog = $('#barProgress');
     if (prog) prog.textContent = S.qi >= 0 && !['lobby', 'podium', 'wager'].includes(S.phase) && !(q().type === 'dare' && S.phase !== 'leaderboard') ? `${pad(realNo())} / ${pad(realTotal())}` : '';
@@ -750,8 +757,33 @@
 
   const qLabel = () => (q().type === 'dare' ? 'Surprise dare' : `Question ${pad(realNo())} <span>/ ${pad(realTotal())}</span>`);
 
+  // A white flash over everything, for the moments something lands.
+  function flash() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const f = document.createElement('div'); f.className = 'flash'; document.body.appendChild(f);
+    f.addEventListener('animationend', () => f.remove()); setTimeout(() => f.remove(), 900);
+  }
+
+  // A dare does not get the calm question intro. It interrupts: siren, warning stripes, a title that slams in,
+  // a mystery silhouette, and only then what the dare is.
+  function renderDareIntro(cq) {
+    stage.innerHTML = `
+      <section class="dare-intro">
+        <div class="di-stripes" aria-hidden="true"></div>
+        <div class="di-bars" aria-hidden="true"><span></span><span></span></div>
+        <div class="di-who" aria-hidden="true"><div class="di-spot"></div><div class="di-sil">${SQ.ratSVG()}</div><b>?</b></div>
+        <div class="di-copy">
+          <p class="di-warn"><b>Warning</b><b>Warning</b><b>Warning</b></p>
+          <h2 class="di-title"><span>A dare</span><span>approaches</span></h2>
+          <div class="di-task"><small>The dare &middot; ${fmt(cq.points)} points</small><p>${esc(cq.text)}</p><span>The wheel decides who.</span></div>
+        </div>
+      </section>`;
+    flash();
+  }
+
   function renderIntro() {
     const cq = q();
+    if (cq.type === 'dare') return renderDareIntro(cq);
     stage.innerHTML = `
       <section class="intro ${cq.media ? 'has-media' : ''}">
         ${deco('intro')}

@@ -168,6 +168,17 @@
   }
 
   function pIntro(s) {
+    if (s.type === 'dare') {
+      document.body.dataset.result = 'dare';
+      screen.innerHTML = `${header()}
+        <section class="p-center p-dare-in">
+          <p class="kicker p-warn">Warning</p>
+          <h2 class="p-title huge p-slam">A dare<br>approaches</h2>
+          <p class="p-lede">The wheel picks one of you. Eyes on the big screen.</p>
+        </section>`;
+      buzz([90, 60, 90, 60, 220]);
+      return;
+    }
     screen.innerHTML = `${header()}
       <section class="p-center">
         <p class="kicker">${s.type === 'dare' ? 'Surprise' : (s.no || s.q + 1) === (s.of || s.total) && s.total > 1 ? 'Final question' : `Question ${pad(s.no || s.q + 1)} / ${pad(s.of || s.total)}`}</p>
