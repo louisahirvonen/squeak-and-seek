@@ -240,6 +240,10 @@
       "options": "players"
     },
     {
+      "type": "write",
+      "text": "Vad ska Louisas första råtta heta?"
+    },
+    {
       "type": "multiple",
       "text": "Hur många tänder har en råtta?",
       "options": [
