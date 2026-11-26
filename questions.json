@@ -3,29 +3,6 @@
   "defaultTimeLimit": 20,
   "questions": [
     {
-      "type": "photo",
-      "text": "Vem är Louisas bias (favorit k-pop idol)?",
-      "options": [
-        {
-          "label": "Jimin",
-          "image": "media/jimin.jpg"
-        },
-        {
-          "label": "Jin",
-          "image": "media/jin.jpg"
-        },
-        {
-          "label": "V",
-          "image": "media/v.jpg"
-        },
-        {
-          "label": "J-Hope",
-          "image": "media/jhope.jpg"
-        }
-      ],
-      "correct": 2
-    },
-    {
       "type": "multiple",
       "text": "Var föddes Louisa?",
       "options": [
@@ -50,29 +27,12 @@
       "image": "media/meadow.jpg"
     },
     {
-      "type": "vote",
-      "text": "Vem skulle överleva längst i en zombieapokalyps?",
-      "options": "players"
-    },
-    {
-      "type": "dare",
-      "text": "Håll ett hyllningstal till Louisa på 20 sekunder.",
-      "seconds": 20
-    },
-    {
-      "type": "multiple",
-      "text": "Vad ser Louisa mest fram emot i livet?",
-      "options": [
-        "Gifta sig",
-        "Skaffa råttor",
-        "Skaffa barn",
-        "Vinna SM i pole dance"
-      ],
-      "correct": [
-        0,
-        1
-      ],
-      "image": "media/deer.jpg"
+      "type": "number",
+      "text": "Hur länge har Louisa och Mattias varit ihop?",
+      "min": 0,
+      "max": 15,
+      "unit": "år",
+      "correct": 6
     },
     {
       "text": "Vad jobbar Louisa med, egentligen?",
@@ -88,70 +48,31 @@
     },
     {
       "type": "photo",
-      "text": "Vilket är Louisas signature move?",
+      "text": "Vem är Louisas bias (favorit k-pop idol)?",
       "options": [
         {
-          "label": "Layback",
-          "image": "media/move-layback.jpg"
+          "label": "Jimin",
+          "image": "media/jimin.jpg"
         },
         {
-          "label": "Iron X",
-          "image": "media/move-iron-x.jpg"
+          "label": "Jin",
+          "image": "media/jin.jpg"
         },
         {
-          "label": "Genie",
-          "image": "media/move-genie.jpg"
+          "label": "V",
+          "image": "media/v.jpg"
         },
         {
-          "label": "Shouldermount",
-          "image": "media/move-shouldermount.jpg"
+          "label": "J-Hope",
+          "image": "media/jhope.jpg"
         }
       ],
-      "correct": 0
-    },
-    {
-      "type": "multiple",
-      "text": "Varför kan Louisa inte sova om nätterna?",
-      "timeLimit": 30,
-      "options": [
-        "Mattias snarkar",
-        "Mardrömmar om jobbet",
-        "Minnet av tekoppen hon tappade på en kvinnas fot i en hotellhiss i Mexiko",
-        "Mattias spelar GTA VI"
-      ],
-      "correct": [
-        0,
-        1,
-        2
-      ]
+      "correct": 2
     },
     {
       "type": "dare",
       "text": "Säg namnet på alla i rummet på 30 sekunder.",
       "seconds": 30
-    },
-    {
-      "type": "write",
-      "text": "Vad är Louisas bästa egenskap?",
-      "image": "media/laugh.jpg"
-    },
-    {
-      "type": "number",
-      "text": "Hur länge har Louisa och Mattias varit ihop?",
-      "min": 0,
-      "max": 15,
-      "unit": "år",
-      "correct": 6
-    },
-    {
-      "type": "vote",
-      "text": "Vem har bäst outfit ikväll?",
-      "options": "players",
-      "image": "media/outfit.jpg"
-    },
-    {
-      "type": "dare",
-      "text": "Visa den senaste bilden i din kamerarulle."
     },
     {
       "type": "truefalse",
@@ -160,50 +81,6 @@
       "media": {
         "image": "media/mello.jpg"
       }
-    },
-    {
-      "type": "vote",
-      "text": "Vem i rummet har mest aura?",
-      "options": "players",
-      "image": "media/cat-ears.jpg"
-    },
-    {
-      "type": "multiple",
-      "text": "Vad var Louisas mål för 2026?",
-      "options": [
-        "Läsa ut The Count of Monte Cristo",
-        "Lära sig japanska",
-        "Komma in i en bra städrutin",
-        "Gå ner i split"
-      ],
-      "correct": 3
-    },
-    {
-      "type": "number",
-      "text": "Hur många minuter behöver Louisa för att \"get ready\" på morgonen?",
-      "min": 0,
-      "max": 90,
-      "unit": "minuter",
-      "scoring": "closest",
-      "correct": 26,
-      "image": "media/hairdo.jpg"
-    },
-    {
-      "type": "dare",
-      "text": "Freestyledans i 30 sekunder.",
-      "seconds": 30,
-      "music": true
-    },
-    {
-      "type": "multiple",
-      "text": "Vad ska man ge Louisa om hon har haft en dålig dag?",
-      "options": [
-        "Marabou",
-        "Frusna ärtor",
-        "Druvor",
-        "Tomatjuice"
-      ],
-      "correct": 2
     },
     {
       "type": "photo",
@@ -229,13 +106,146 @@
       "correct": 3
     },
     {
+      "type": "vote",
+      "text": "Vem har bäst outfit ikväll?",
+      "options": "players",
+      "image": "media/outfit.jpg"
+    },
+    {
+      "type": "multiple",
+      "text": "Vad var Louisas mål för 2026?",
+      "options": [
+        "Läsa ut The Count of Monte Cristo",
+        "Lära sig japanska",
+        "Komma in i en bra städrutin",
+        "Gå ner i split"
+      ],
+      "correct": 3
+    },
+    {
+      "type": "dare",
+      "text": "Ge en komplimang till tre personer du inte har träffat förrän ikväll."
+    },
+    {
+      "type": "number",
+      "text": "Hur många minuter behöver Louisa för att \"get ready\" på morgonen?",
+      "min": 0,
+      "max": 90,
+      "unit": "minuter",
+      "scoring": "closest",
+      "correct": 26,
+      "image": "media/hairdo.jpg"
+    },
+    {
+      "type": "multiple",
+      "text": "Vad ska man ge Louisa om hon har haft en dålig dag?",
+      "options": [
+        "Marabou",
+        "Frusna ärtor",
+        "Druvor",
+        "Tomatjuice"
+      ],
+      "correct": 2
+    },
+    {
+      "type": "write",
+      "text": "Vad är Louisas bästa egenskap?",
+      "image": "media/laugh.jpg"
+    },
+    {
+      "type": "photo",
+      "text": "Vilket är Louisas signature move?",
+      "options": [
+        {
+          "label": "Layback",
+          "image": "media/move-layback.jpg"
+        },
+        {
+          "label": "Iron X",
+          "image": "media/move-iron-x.jpg"
+        },
+        {
+          "label": "Genie",
+          "image": "media/move-genie.jpg"
+        },
+        {
+          "label": "Shouldermount",
+          "image": "media/move-shouldermount.jpg"
+        }
+      ],
+      "correct": 0
+    },
+    {
+      "type": "dare",
+      "text": "Hämta påfyllning åt Louisa och servera den med stil."
+    },
+    {
+      "type": "multiple",
+      "text": "Vad ser Louisa mest fram emot i livet?",
+      "options": [
+        "Gifta sig",
+        "Skaffa råttor",
+        "Skaffa barn",
+        "Vinna SM i pole dance"
+      ],
+      "correct": [
+        0,
+        1
+      ],
+      "image": "media/deer.jpg"
+    },
+    {
+      "type": "vote",
+      "text": "Vem i rummet har mest aura?",
+      "options": "players",
+      "image": "media/cat-ears.jpg"
+    },
+    {
+      "type": "number",
+      "text": "Hur många timmar hade Louisa sovit per dag om hon inte behövde jobba?",
+      "media": {
+        "image": "media/sleep.jpg"
+      },
+      "min": 0,
+      "max": 24,
+      "unit": "timmar",
+      "scoring": "closest",
+      "correct": 16
+    },
+    {
+      "type": "dare",
+      "text": "Visa den senaste bilden i din kamerarulle."
+    },
+    {
+      "type": "multiple",
+      "text": "Varför kan Louisa inte sova om nätterna?",
+      "timeLimit": 30,
+      "options": [
+        "Mattias snarkar",
+        "Mardrömmar om jobbet",
+        "Minnet av tekoppen hon tappade på en kvinnas fot i en hotellhiss i Mexiko",
+        "Mattias spelar GTA VI"
+      ],
+      "correct": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
       "type": "write",
       "text": "Vilken blir Louisas nästa hobby?",
       "image": "media/bamboo.jpg"
     },
     {
+      "type": "vote",
+      "text": "Vem skulle överleva längst i en zombieapokalyps?",
+      "options": "players"
+    },
+    {
       "type": "dare",
-      "text": "Ge en komplimang till tre personer du inte har träffat förrän ikväll."
+      "text": "Håll ett hyllningstal till Louisa på 20 sekunder.",
+      "seconds": 20
     },
     {
       "type": "multiple",
@@ -264,25 +274,15 @@
       }
     },
     {
-      "type": "number",
-      "text": "Hur många timmar hade Louisa sovit per dag om hon inte behövde jobba?",
-      "media": {
-        "image": "media/sleep.jpg"
-      },
-      "min": 0,
-      "max": 24,
-      "unit": "timmar",
-      "scoring": "closest",
-      "correct": 16
-    },
-    {
-      "type": "dare",
-      "text": "Hämta påfyllning åt Louisa och servera den med stil."
-    },
-    {
       "type": "vote",
       "text": "Vem kommer lägga sig tidigast inatt?",
       "options": "players"
+    },
+    {
+      "type": "dare",
+      "text": "Freestyledans i 30 sekunder.",
+      "seconds": 30,
+      "music": true
     },
     {
       "type": "write",
