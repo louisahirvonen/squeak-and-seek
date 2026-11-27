@@ -36,15 +36,18 @@
       "image": "media/together.jpg"
     },
     {
-      "text": "Vad jobbar Louisa med, egentligen?",
-      "timeLimit": 30,
+      "text": "Vad gör Louisa egentligen på jobbet?",
       "options": [
-        "Finjusterar språkmodeller på svenska lagtexter",
-        "Bygger datapipelines i Snowflake åt en bank",
-        "Bygger AI-agenter med LangGraph och RAG",
-        "Automatiserar testning av mobilappar"
+        "Scrollar TikTok",
+        "Bygger nästa ChatGPT",
+        "Försöker överleva",
+        "Får agenter att skärpa sig"
       ],
-      "correct": 2,
+      "correct": [
+        0,
+        2,
+        3
+      ],
       "image": "media/blazer.jpg"
     },
     {
@@ -69,6 +72,17 @@
         }
       ],
       "correct": 2
+    },
+    {
+      "text": "Vilket land har Louisa inte rest till?",
+      "options": [
+        "Egypten",
+        "Sydkorea",
+        "Norge",
+        "Estland"
+      ],
+      "correct": 2,
+      "image": "media/selfie.jpg"
     },
     {
       "type": "dare",
@@ -139,16 +153,27 @@
       "image": "media/hairdo.jpg"
     },
     {
-      "type": "multiple",
+      "type": "photo",
       "text": "Vad ska man ge Louisa om hon har haft en dålig dag?",
       "options": [
-        "Marabou",
-        "Frusna ärtor",
-        "Druvor",
-        "Tomatjuice"
+        {
+          "label": "Marabou",
+          "image": "media/food-marabou.jpg"
+        },
+        {
+          "label": "Frusna ärtor",
+          "image": "media/food-artor.jpg"
+        },
+        {
+          "label": "Druvor",
+          "image": "media/food-druvor.jpg"
+        },
+        {
+          "label": "Tomatjuice",
+          "image": "media/food-tomatjuice.jpg"
+        }
       ],
-      "correct": 2,
-      "image": "media/selfie.jpg"
+      "correct": 2
     },
     {
       "type": "write",
@@ -226,7 +251,7 @@
       "options": [
         "Mattias snarkar",
         "Mardrömmar om jobbet",
-        "Minnet av tekoppen hon tappade på en kvinnas fot i en hotellhiss i Mexiko",
+        "Minnet av när hon tappade en tekopp på en kvinnas fot i en hotellhiss i Mexiko",
         "Mattias spelar GTA VI"
       ],
       "correct": [
@@ -257,9 +282,9 @@
       "text": "Vad heter dokumentären som har gjorts om byn Louisa växte upp i?",
       "timeLimit": 30,
       "options": [
-        "Ett liv bland kor, skog och kristendom",
+        "Livet på landet",
         "Församlingen, domedagen och våldtäkterna",
-        "Bönen, bygden och tystnaden",
+        "En svensk idyll",
         "Adventister: livsstilen som får dig att bli 100"
       ],
       "correct": 1
@@ -270,7 +295,7 @@
         "Att cykla",
         "Att svälja piller",
         "Att knyta skorna",
-        "Att läsa av en analog klocka"
+        "Att vissla"
       ],
       "correct": 1,
       "after": {
@@ -284,9 +309,9 @@
       "image": "media/hands.jpg",
       "options": [
         "Hårfärgning utan handskar",
-        "En allergisk reaktion mot diskmedel",
+        "En allergisk reaktion",
         "En cykeltur utan solkräm",
-        "Tre timmars rödbetsplockning"
+        "3 timmar av att sitta och äta blåbär i skogen"
       ],
       "correct": 2
     },
