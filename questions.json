@@ -90,14 +90,6 @@
       "seconds": 30
     },
     {
-      "type": "truefalse",
-      "text": "Melodifestivalen är årets högtid.",
-      "correct": true,
-      "media": {
-        "image": "media/mello.jpg"
-      }
-    },
-    {
       "type": "photo",
       "text": "Vilket är Louisas favoritspel?",
       "options": [
